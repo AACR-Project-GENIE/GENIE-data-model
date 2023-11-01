@@ -1,2 +1,2 @@
-# genie-bpc-brca-landscape-manu
-Landscape manuscript analyses for the GENIE BPC cohort of Breast cancer
+# genie-bpc-surv-gene-sims
+Survival simulations for data similar to GENIE BPC (sparse, binary, correlated covariates)
