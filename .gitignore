@@ -2,3 +2,12 @@
 .Rhistory
 .RData
 .Ruserdata
+
+*.csv
+*.html
+*.rds
+*.txt 
+*.seg
+*.pdf
+
+*.DS_Store
