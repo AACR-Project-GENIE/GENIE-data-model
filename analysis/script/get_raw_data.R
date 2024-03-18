@@ -21,8 +21,8 @@ dft_folders <- tibble::tribble(
   ~cohort, ~synid,
   # consortium releases:
   "BLADDER_1.2-consortium", "syn53018574",
-  'CRC_1.2-consortium', 'syn26046784',
-  "NSCLC_2.1-consortium", 'syn25982471',
+  'CRC_1.3-consortium', 'syn53463635',
+  "NSCLC_2.2-consortium", 'syn53463552',
   'BrCa_1.2-consortium', 'syn39802381',
   'PANC_1.2-consortium', 'syn50612197',
   'Prostate_1.2-consortium', 'syn50612196'
