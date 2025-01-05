@@ -15,8 +15,8 @@ sim_n500 <- readr::read_rds(
 )
 
 # Example of running one time:
-test_beta <- sim_n80 %>% slice(2) %>% pull(beta_valid) %>% unlist(.)
-test_coef_dat <- sim_n80 %>% slice(2) %>% pull(coef_est) %>% `[[`(.,1)
+# test_beta <- sim_n80 %>% slice(2) %>% pull(beta_valid) %>% unlist(.)
+# test_coef_dat <- sim_n80 %>% slice(2) %>% pull(coef_est) %>% `[[`(.,1)
 # test_gen_dat <- sim_n80 %>% slice(2) %>% pull(gen_dat_valid) %>% `[[`(.,1)
 
 
@@ -91,6 +91,21 @@ eval_wrapper_cox <- function(sim_data) {
       )
     ) %>%
     unnest(bias_dat)
+  
+  sim_data %<>%
+    mutate(
+      coef_2x2_dat = purrr::map2(
+        .x = beta_valid,
+        .y = coef_est,
+        .f = (function(b, c) {
+          eval_coef_2x2_cox(
+            true_beta_valid = b,
+            coef_dat = c
+          )
+        })
+      )
+    ) %>%
+    unnest(coef_2x2_dat)
   
   return(sim_data)
   

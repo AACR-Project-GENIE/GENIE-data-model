@@ -12,3 +12,5 @@ gen_time_cox_weibull <- function(beta, x, shape, scale) {
   
   return(draws)
 }
+
+
