@@ -114,6 +114,13 @@ eval_wrapper_cox <- function(sim_data) {
 # Where the actual work is done:
 sim_n80 %<>% eval_wrapper_cox(.)
 sim_n500 %<>% eval_wrapper_cox(.)
+
+sim_n80 %>% summarize(
+  tp = mean(tp_coef, na.rm = T), 
+  fp = mean(fp_coef, na.rm = T),
+  tn = mean(tn_coef, na.rm = T),
+  fn = mean(fn_coef, na.rm = T)
+)
     
 
 
