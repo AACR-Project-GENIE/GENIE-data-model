@@ -189,3 +189,5 @@ gg_sens_spec <- ggplot(
 
 gg_sens_spec
 
+
+sim_sum_avg %>% glimpse

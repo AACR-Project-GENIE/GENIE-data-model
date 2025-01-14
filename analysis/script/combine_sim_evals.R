@@ -74,6 +74,8 @@ lev_meth <- c(
   "LASSO (5-CV boot)"
 )
 
+
+
 sim_sum_all %<>% select(
   id, gen_method, n, analysis_method, auc, 
   contains("bias"),
