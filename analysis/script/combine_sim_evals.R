@@ -22,10 +22,10 @@ n80_lasso_loocv <- read_wrap('gen_dat_one_n80_lasso_loocv.rds')
 n500_lasso_loocv <- read_wrap('gen_dat_one_n500_lasso_loocv.rds')
 
 n80_lasso_cv_boot <- read_wrap(
-  'gen_dat_one_n80_lasso_cv_boot_f200.rds' 
+  'gen_dat_one_n80_lasso_cv_boot.rds' 
 )
 n500_lasso_cv_boot <- read_wrap(
-  'gen_dat_one_n80_lasso_cv_boot_f200.rds' 
+  'gen_dat_one_n500_lasso_cv_boot.rds' 
 )
 
 
@@ -78,7 +78,9 @@ sim_sum_all %<>% select(
   id, gen_method, n, analysis_method, auc, 
   contains("bias"),
   contains("sens"),
-  contains("spec")
+  contains("spec"),
+  tp_beta:fn_beta,
+  power, selectivity
 ) %>%
   mutate(
     n_lab = glue("n={n}"),
@@ -96,17 +98,32 @@ sim_sum_all %<>% select(
       levels = lev_meth
     )
   )
+
+# for the rows with no selected terms, they don't really have a selected bias.
+sim_sum_all %<>%
+  mutate(avg_abs_bias_selected = if_else(is.nan(avg_abs_bias_selected), NA_real_, avg_abs_bias_selected),
+         avg_bias_selected = if_else(is.nan(avg_abs_bias_selected), NA_real_, avg_abs_bias_selected))
+         
     
 
 sim_sum_avg <- sim_sum_all %>%
   group_by(analysis_method_f, n_lab) %>%
   summarize(
     across(
-      .cols = c(auc, avg_bias, avg_abs_bias, sens_at_thresh, spec_at_thresh),
-      .fns = mean
+      .cols = c(auc, avg_bias, avg_abs_bias, avg_abs_bias_selected,
+                sens_at_thresh, spec_at_thresh,
+                tp_beta:fn_beta,
+                power, selectivity),
+      .fns = \(x) mean(x, na.rm = T)
     ),
     .groups = "drop"
   )
+
+# sim_sum_avg %>% 
+#   select(analysis_method_f, n_lab, tp_beta, fp_beta, power, selectivity,
+#          avg_abs_bias,
+#          avg_abs_bias_selected) %>% 
+#   arrange(n_lab)
 
 readr::write_rds(
   x = sim_sum_all,
