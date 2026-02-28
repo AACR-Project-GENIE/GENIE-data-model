@@ -3,6 +3,9 @@
 utils::globalVariables("field_name")
 utils::globalVariables("letter_code")
 utils::globalVariables("col_read_type")
+utils::globalVariables("valid_val_struc")
+utils::globalVariables(".data")
+
 
 utils::globalVariables("ca_seq")
 utils::globalVariables("dob_ca_dx_days")

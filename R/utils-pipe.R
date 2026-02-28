@@ -12,3 +12,16 @@
 #' @param rhs A function call using the magrittr semantics.
 #' @return The result of calling `rhs(lhs)`.
 NULL
+
+#' Injection operator
+#'
+#' See \code{rlang::\link[rlang:inject]{:=}} for details.
+#'
+#' @name :=
+#' @rdname inject
+#' @keywords internal
+#' @export
+#' @importFrom rlang :=
+#' @usage assignee := assignment
+#' @return Similar to a = b.
+NULL
