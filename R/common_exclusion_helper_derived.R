@@ -31,7 +31,7 @@ column_exclusion_helper_derived <- function(
     'cpt_partial'
   )
 
-  dat %<>%
+  dat <- dat %>%
     dplyr::select(
       -tidyselect::any_of(excl_col),
       -tidyselect::matches('^vstat_'),

@@ -3,5 +3,6 @@
 export("%>%")
 export(column_exclusion_helper_derived)
 export(common_data_derivation_operations)
+export(convert_dat_col_types)
 export(derive_ca_dx)
 importFrom(magrittr,"%>%")
