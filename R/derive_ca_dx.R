@@ -11,10 +11,10 @@ derive_ca_dx <- function(
   raw_ca_dx,
   dat_dict_sub
 ) {
-  ca_dx <- column_exclusion_helper_derived(ca_dx)
+  raw_ca_dx <- column_exclusion_helper_derived(raw_ca_dx)
 
   rtn <- common_data_derivation_operations(
-    dat = ca_dx,
+    dat = raw_ca_dx,
     dict = dat_dict_sub
   )
 
