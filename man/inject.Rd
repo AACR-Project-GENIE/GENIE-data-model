@@ -6,8 +6,13 @@
 \usage{
 assignee := assignment
 }
+\arguments{
+\item{assignee}{Name of the new variable.}
+
+\item{assignment}{An expression of what value to assign to the new variable.}
+}
 \value{
-Similar to a = b.
+Similar to a = b except it works in special cases.
 }
 \description{
 See \code{rlang::\link[rlang:inject]{:=}} for details.

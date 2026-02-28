@@ -23,5 +23,7 @@ NULL
 #' @export
 #' @importFrom rlang :=
 #' @usage assignee := assignment
-#' @return Similar to a = b.
+#' @param assignee Name of the new variable.
+#' @param assignment An expression of what value to assign to the new variable.
+#' @return Similar to a = b except it works in special cases.
 NULL
