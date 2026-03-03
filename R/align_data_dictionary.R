@@ -20,17 +20,17 @@ align_data_dictionary <- function(
   # Data dictionary lists variables without the triple underscore + number extension.  This expands it out to include those.
   exp_stubs <- expand_stub_variables(dat_dict, dat_cols = all_columns)
   stub_names <- find_stubs_in_data(dat_cols = all_columns)
-  dat_dict <- bind_rows(
+  dat_dict <- dplyr::bind_rows(
     dat_dict,
     exp_stubs
   ) %>%
-    filter(!(field_name %in% stub_names$stub))
+    dplyr::filter(!(field_name %in% stub_names$stub))
 
   dat_dict <- add_undefined_vars(dat_dict, undefined_vars = undefined_vars)
 
-  dat_dict %<>%
-    mutate(
-      required = case_when(
+  dat_dict <- dat_dict %>%
+    dplyr::mutate(
+      required = dplyr::case_when(
         field_name %in% required_override ~ TRUE,
         T ~ required
       )
@@ -47,17 +47,17 @@ align_data_dictionary <- function(
     num_cols = num_cols
   )
 
-  dat_dict %<>%
-    mutate(
+  dat_dict <- dat_dict %>%
+    dplyr::mutate(
       # the choices_calc field is missing some important stuff we'll want to check.
-      valid_val_str = case_when(
+      valid_val_str = dplyr::case_when(
         field_type %in% c('checkbox', 'dropdown', 'radio') ~ choices_calc,
         field_type %in% 'yesno' ~ '0, No|1, Yes',
         field_type %in% 'complete_check' ~ '1, No|2, Yes'
       )
     )
 
-  dat_dict %<>%
+  dat_dict <- dat_dict %>%
     split_valid_values(.)
 
   dat_dict
