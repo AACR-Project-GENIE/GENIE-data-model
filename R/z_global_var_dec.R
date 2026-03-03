@@ -31,3 +31,10 @@ utils::globalVariables(
     "Required Field?"
   )
 )
+
+utils::globalVariables(
+  names = c(
+    "stub",
+    "num"
+  )
+)
