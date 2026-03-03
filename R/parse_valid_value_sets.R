@@ -1,4 +1,16 @@
-# Takes the valid value format in prissmm and turns it into named (magic number keys) character vectors (text values).
+#' Parse the PRISSMM data dictionary valid value sets.
+#'
+#' @description Takes the valid value format in prissmm and turns it into named
+#' (magic number keys) character vectors (text values).
+#'
+#'
+#' @param str valid value strings (key/val sep by "," and keys separated by |)
+#' @param add_na Add NA to the valid value sets?
+#'
+#' @returns A named list where the keys are the names and the values are the list values.
+#' @export
+#'
+#' @examples
 parse_valid_value_sets <- function(
   str,
   add_na = T
