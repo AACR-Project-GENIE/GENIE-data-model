@@ -2,6 +2,7 @@
 
 export("%>%")
 export(":=")
+export(add_undefined_vars)
 export(column_exclusion_helper_derived)
 export(common_data_derivation_operations)
 export(convert_dat_col_types)
