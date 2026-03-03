@@ -16,5 +16,6 @@ Imports:
     readr,
     rlang,
     stringr,
+    tibble,
     tidyr,
     tidyselect
