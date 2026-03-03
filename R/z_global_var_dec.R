@@ -42,6 +42,9 @@ utils::globalVariables(
     "num",
     'closest',
     'var',
-    '.is_first'
+    '.is_first',
+    'valid_val_str',
+    'valid_val_key_code',
+    'valid_val_value_meaning'
   )
 )

@@ -1,3 +1,17 @@
+#' Align the data dictionary with the data
+#'
+#' @param path_to_cur_dat Path to the data we're aligning to.
+#' @param path_to_dat_dict Path to the data dictionary to be aligned.
+#' @param undefined_vars Passed on to `add_undefined_vars()`, default of NULL uses a built-in list.
+#' @param required_override Variables to manually set to be required.  Defaults to  'record_id', 'redcap_repeat_instrument' and 'redcap_repeat_instance'.
+#' @param dttm_cols Columns to mark as datetime, if NULL uses default in `dd_assign_coltypes()`.
+#' @param date_cols Columns to mark as date, if NULL uses default in `dd_assign_coltypes()`.
+#' @param num_cols Columns to mark as numeric if NULL uses default in `dd_assign_coltypes()`.
+#'
+#' @returns Aligned data dictionary (a tibble).
+#' @export
+#'
+#' @examples
 align_data_dictionary <- function(
   path_to_cur_dat,
   path_to_dat_dict,
@@ -10,16 +24,16 @@ align_data_dictionary <- function(
   required_override <- required_override %||%
     c('record_id', 'redcap_repeat_instrument', 'redcap_repeat_instance')
 
-  dat_dict <- dd_readr(dd_path)
+  dat_dict <- dd_readr(path_to_dat_dict)
 
-  dat_cols <- curated_path %>%
+  dat_cols <- path_to_cur_dat %>%
     readr::read_csv(., n_max = 1) %>%
     trim_nameless_cols(.) %>%
     colnames(.)
 
   # Data dictionary lists variables without the triple underscore + number extension.  This expands it out to include those.
-  exp_stubs <- expand_stub_variables(dat_dict, dat_cols = all_columns)
-  stub_names <- find_stubs_in_data(dat_cols = all_columns)
+  exp_stubs <- expand_stub_variables(dat_dict, dat_cols = dat_cols)
+  stub_names <- find_stubs_in_data(dat_cols = dat_cols)
   dat_dict <- dplyr::bind_rows(
     dat_dict,
     exp_stubs
@@ -41,7 +55,7 @@ align_data_dictionary <- function(
   }
 
   dat_dict <- dd_assign_coltypes(
-    dd,
+    dat_dict,
     dttm_cols = dttm_cols,
     date_cols = date_cols,
     num_cols = num_cols

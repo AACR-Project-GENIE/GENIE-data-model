@@ -13,9 +13,9 @@ split_valid_values <- function(
   add_to_existing = T
 ) {
   dat_valid_vals <- data_dictionary %>%
-    filter(!is.na(valid_val_str))
+    dplyr::filter(!is.na(valid_val_str))
 
-  dat_valid_vals %<>%
+  dat_valid_vals <- dat_valid_vals %>%
     dplyr::mutate(
       valid_val_struc = parse_valid_value_sets(valid_val_str),
       valid_val_key_code = purrr::map(.x = valid_val_struc, .f = names),
