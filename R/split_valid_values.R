@@ -1,4 +1,13 @@
 # split the valid values spec from the data dictionary into columns for the key (coded, usually numeric, value) and the value (the meaning, which is usually a character string).
+#' Split the valid values into structured columns.
+#'
+#' @param data_dictionary The data dictionary with `valid_val_str` already added (for exmaple with `dd_readr()`).
+#' @param add_to_existing Add the derived columns to the existing data?
+#'
+#' @returns A tibble like `data_dictionary` with the new columns if add_to_existing = TRUE.  Otherwise just the new cols.
+#' @export
+#'
+#' @examples
 split_valid_values <- function(
   data_dictionary,
   add_to_existing = T
