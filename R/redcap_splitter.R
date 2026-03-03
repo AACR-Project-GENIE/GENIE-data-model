@@ -49,7 +49,7 @@ redcap_splitter <- function(
       )
     )
 
-  nested_dd %<>%
+  nested_dd <- nested_dd %>%
     dplyr::mutate(
       tab = purrr::map2(
         .x = form_in_extract,
@@ -65,7 +65,7 @@ redcap_splitter <- function(
       )
     )
 
-  nested_dd %<>%
+  nested_dd <- nested_dd %>%
     dplyr::mutate(
       form_in_extract = dplyr::case_when(
         is.na(form_in_extract) ~ "patient",
