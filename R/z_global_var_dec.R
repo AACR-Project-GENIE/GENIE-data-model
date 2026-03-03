@@ -16,10 +16,14 @@ utils::globalVariables("redcap_ca_index")
 utils::globalVariables("redcap_ca_seq")
 utils::globalVariables(".")
 
-utils::globalVariables("dat_dict_sub")
-utils::globalVariables("form_in_extract")
-utils::globalVariables("var_list")
-utils::globalVariables("redcap_repeat_instrument")
+utils::globalVariables(
+  names = c(
+    "dat_dict_sub",
+    "form_in_extract",
+    "var_list",
+    "redcap_repeat_instrument"
+  )
+)
 
 # Names from the data dictionary:
 utils::globalVariables(
