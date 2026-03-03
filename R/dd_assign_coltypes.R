@@ -1,3 +1,14 @@
+#' Assign coltypes to the data dictionary
+#'
+#' @param dd Data dictionary as read by `dd_readr()`.
+#' @param dttm_cols Columns to cast as datetime (default is along list mostly based ending in _stop_time or _start_time).
+#' @param date_cols Columns to cast as dates (default is cpt_seq_date and qa_full_date).
+#' @param num_cols Columns to case as numeric (default is a long list)
+#'
+#' @returns A verison of `dd` with `col_read_type` column added.
+#' @export
+#'
+#' @examples
 dd_assign_coltypes <- function(
   dd,
   dttm_cols = NULL,
