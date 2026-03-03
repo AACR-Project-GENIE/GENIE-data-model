@@ -7,12 +7,12 @@ split_valid_values <- function(
     filter(!is.na(valid_val_str))
 
   dat_valid_vals %<>%
-    mutate(
+    dplyr::mutate(
       valid_val_struc = parse_valid_value_sets(valid_val_str),
       valid_val_key_code = purrr::map(.x = valid_val_struc, .f = names),
       valid_val_value_meaning = purrr::map(.x = valid_val_struc, .f = names)
     ) %>%
-    select(
+    dplyr::select(
       field_name,
       valid_val_struc,
       valid_val_key_code,
@@ -20,7 +20,7 @@ split_valid_values <- function(
     )
 
   if (add_to_existing) {
-    left_join(
+    dplyr::left_join(
       data_dictionary,
       dat_valid_vals,
       by = 'field_name'
