@@ -11,7 +11,7 @@ dd_readr <- function(dat_dict_path) {
     dat_dict_path
   ) %>%
     # jeez these headers suck.
-    rename(
+    dplyr::rename(
       field_name = `Variable / Field Name`,
       form = `Form Name`,
       field_type = `Field Type`,
@@ -19,18 +19,18 @@ dd_readr <- function(dat_dict_path) {
       choices_calc = `Choices, Calculations, OR Slider Labels`,
       required = `Required Field?`
     ) %>%
-    rename_all(~ stringr::str_replace_all(tolower(.x), " ", "_")) %>%
-    rename_all(~ stringr::str_replace_all(tolower(.x), "\\?", "")) %>%
-    rename_all(
+    dplyr::rename_all(~ stringr::str_replace_all(tolower(.x), " ", "_")) %>%
+    dplyr::rename_all(~ stringr::str_replace_all(tolower(.x), "\\?", "")) %>%
+    dplyr::rename_all(
       ~ stringr::str_replace_all(tolower(.x), "_\\(.*\\)", "")
     ) %>%
-    mutate(
-      required = if_else(required %in% "y", T, F) # fixing y/NA coding.
+    dplyr::mutate(
+      required = dplyr::if_else(required %in% "y", T, F) # fixing y/NA coding.
     )
 
   dat_dict <- dat_dict %>%
-    mutate(
-      choices_calc = case_when(
+    dplyr::mutate(
+      choices_calc = dplyr::case_when(
         field_type %in% 'checkbox' ~ paste0('0, 0 |', choices_calc)
       )
     )
