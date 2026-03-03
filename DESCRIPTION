@@ -15,4 +15,5 @@ Imports:
     purrr,
     readr,
     rlang,
+    tidyr,
     tidyselect
