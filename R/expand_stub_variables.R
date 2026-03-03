@@ -24,7 +24,7 @@ expand_stub_variables <- function(dd, dat_cols) {
   stub_merge <- stub_vars %>%
     dplyr::slice(rep(1:dplyr::n(), times = max)) %>%
     dplyr::group_by(stub) %>%
-    dplyr::mutate(var = paste0(stub, '___', row_number())) %>%
+    dplyr::mutate(var = paste0(stub, '___', dplyr::row_number())) %>%
     dplyr::ungroup(.) %>%
     dplyr::select(var, stub)
 

@@ -39,6 +39,9 @@ utils::globalVariables(
 utils::globalVariables(
   names = c(
     "stub",
-    "num"
+    "num",
+    'closest',
+    'var',
+    '.is_first'
   )
 )

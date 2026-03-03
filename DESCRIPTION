@@ -15,6 +15,7 @@ Imports:
     purrr,
     readr,
     rlang,
+    stringdist,
     stringr,
     tibble,
     tidyr,
