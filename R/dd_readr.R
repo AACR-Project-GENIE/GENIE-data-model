@@ -8,7 +8,8 @@
 #' @examples
 dd_readr <- function(dat_dict_path) {
   dat_dict <- readr::read_csv(
-    dat_dict_path
+    dat_dict_path,
+    show_col_types = FALSE
   ) %>%
     # jeez these headers suck.
     dplyr::rename(
