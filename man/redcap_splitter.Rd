@@ -5,14 +5,14 @@
 \title{Split PRISSMM redcap bulk download into instruments.}
 \usage{
 redcap_splitter(
-  redcap_data,
+  redcap_data_path,
   dict,
   keys_in_all_instr = NULL,
   forms_missing_in_redcap = NULL
 )
 }
 \arguments{
-\item{redcap_data}{The redcap bulk download (all instruments)}
+\item{redcap_data_path}{The path to the redcap bulk download (all instruments).}
 
 \item{dict}{The data dictionary for the redcap project.}
 

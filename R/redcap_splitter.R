@@ -1,6 +1,6 @@
 #' Split PRISSMM redcap bulk download into instruments.
 #'
-#' @param redcap_data The redcap bulk download (all instruments)
+#' @param redcap_data_path The path to the redcap bulk download (all instruments).
 #' @param dict The data dictionary for the redcap project.
 #' @param keys_in_all_instr Keys to keep for each split instrument.  Default is "record_id", "redcap_repeat_instrument" and "redcap_repeat_instance".
 #' @param forms_missing_in_redcap Forms that exist in the data dictionary but come in as NA for the redcap_repeat_instrument.  Reason unknown.  Default includes "curation_initiation_eligibility", "patient_characteristics", "curation_completion", "quality_assurance".
@@ -10,11 +10,16 @@
 #'
 #' @examples
 redcap_splitter <- function(
-  redcap_data,
+  redcap_data_path,
   dict,
   keys_in_all_instr = NULL,
   forms_missing_in_redcap = NULL
 ) {
+  redcap_data <- readr::read_csv(
+    redcap_data_path,
+    col_types = cols(.default = col_character())
+  )
+
   keys_in_all_instr <- keys_in_all_instr %||%
     c(
       'record_id',
