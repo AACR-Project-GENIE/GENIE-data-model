@@ -17,7 +17,7 @@ redcap_splitter <- function(
 ) {
   redcap_data <- readr::read_csv(
     redcap_data_path,
-    col_types = cols(.default = col_character())
+    col_types = readr::cols(.default = readr::col_character())
   )
 
   keys_in_all_instr <- keys_in_all_instr %||%
