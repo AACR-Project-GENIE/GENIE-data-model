@@ -27,7 +27,7 @@ align_data_dictionary <- function(
   dat_dict <- dd_readr(path_to_dat_dict)
 
   dat_cols <- path_to_cur_dat %>%
-    readr::read_csv(., n_max = 1) %>%
+    readr::read_csv(., n_max = 1, show_col_types = FALSE) %>%
     trim_nameless_cols(.) %>%
     colnames(.)
 
