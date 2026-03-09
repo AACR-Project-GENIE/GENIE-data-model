@@ -4,10 +4,10 @@
 \alias{derive_ca_dx}
 \title{Derive cancer diagnosis form}
 \usage{
-derive_ca_dx(raw_ca_dx, dat_dict_sub)
+derive_ca_dx(tab, dat_dict_sub)
 }
 \arguments{
-\item{raw_ca_dx}{Cancer diagnosis form from the raw redcap.}
+\item{tab}{Cancer diagnosis form from the raw redcap.}
 
 \item{dat_dict_sub}{The subset of the data dictionary with variables for this instrument.}
 }

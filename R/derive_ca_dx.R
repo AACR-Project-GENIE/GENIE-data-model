@@ -1,6 +1,6 @@
 #' Derive cancer diagnosis form
 #'
-#' @param raw_ca_dx Cancer diagnosis form from the raw redcap.
+#' @param tab Cancer diagnosis form from the raw redcap.
 #' @param dat_dict_sub The subset of the data dictionary with variables for this instrument.
 #'
 #' @returns A dataframe similar to ca_dx with additional derivations.
@@ -8,7 +8,7 @@
 #'
 #' @examples # Going to need synthetic data probably...
 derive_ca_dx <- function(
-  raw_ca_dx,
+  tab,
   dat_dict_sub
 ) {
   raw_ca_dx <- column_exclusion_helper_derived(raw_ca_dx)
