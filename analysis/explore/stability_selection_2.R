@@ -22,7 +22,7 @@ plot(stab.lasso.glmnet)
 
 
 n_id <- 500
-n_junk_var <- 3
+n_junk_var <- 100
 easy_covar <- expand_grid(
   id = paste0('id', str_pad(1:n_id, side = 'left', pad = 0, width = 3)),
   var = c(
@@ -108,11 +108,18 @@ stabsel_cox <- function(
 
   # for complementary pairs (Shah & Samworth 2013), draw n/2 each time
   for (i in seq_len(nsub)) {
-    print('meh')
     idx <- sample(n, sub_size, replace = FALSE)
 
     x_sub <- x[idx, , drop = FALSE]
     y_sub <- y[idx, ]
+
+    glmnet(
+      x_sub,
+      y_sub,
+      family = "cox",
+      nlambda = nlambda,
+      ...
+    )
 
     # fit lasso on subsample
     fit <- tryCatch(
@@ -156,8 +163,7 @@ stabsel_cox <- function(
 stabsel_cox(
   x = x_mat,
   y = with(easy_test, Surv(time = x, time2 = y, event = event)),
-  family = 'cox',
-  nsub = 1
+  nsub = 30
 )
 
 glmnet(
@@ -165,3 +171,276 @@ glmnet(
   y = with(easy_test, Surv(time = x, time2 = y, event = event))[1:100, ],
   family = 'cox'
 )
+
+
+stabsel_cox_2 <- function(
+  x,
+  y,
+  nsub = 100,
+  frac = 0.5,
+  cutoff = 0.75,
+  nlambda = 100,
+  ...
+) {
+  # x: predictor matrix
+  # y: Surv object
+  # nsub: number of subsamples
+  # frac: fraction of data per subsample (0.5 for complementary pairs)
+  # cutoff: selection probability threshold
+  # nlambda: number of lambda values in the glmnet path
+
+  n <- nrow(x)
+  p <- ncol(x)
+  sub_size <- floor(n * frac)
+
+  # matrix to track selection probability at each lambda
+  # rows = variables, columns will accumulate counts
+  sel_count_any <- rep(0, p) # ever selected along the path
+  sel_count_by_lambda <- NULL # per-lambda tracking (initialised on first fit)
+  names(sel_count_any) <- colnames(x)
+  total_fits <- 0
+
+  for (i in seq_len(nsub)) {
+    perm <- sample(n)
+    half1 <- perm[1:sub_size]
+    half2 <- perm[(sub_size + 1):(2 * sub_size)]
+
+    for (half in list(half1, half2)) {
+      fit <- tryCatch(
+        glmnet(
+          x[half, , drop = FALSE],
+          y[half, ],
+          family = "cox",
+          nlambda = nlambda,
+          ...
+        ),
+        error = function(e) NULL
+      )
+      if (is.null(fit)) {
+        next
+      }
+
+      beta <- as.matrix(coef(fit))
+      selected_mat <- (beta != 0) * 1
+
+      # per-lambda tracking: accumulate selection indicators
+      # glmnet may return different numbers of lambdas across fits,
+      # so we track the *maximum* selection probability across the path
+      max_selected <- apply(selected_mat, 1, max)
+      sel_count_any <- sel_count_any + max_selected
+
+      # also store the full per-lambda selection matrix for curves
+      if (is.null(sel_count_by_lambda)) {
+        sel_count_by_lambda <- selected_mat
+      } else {
+        # align to common number of lambdas (use the smaller)
+        ncol_common <- min(ncol(sel_count_by_lambda), ncol(selected_mat))
+        sel_count_by_lambda <- sel_count_by_lambda[,
+          1:ncol_common,
+          drop = FALSE
+        ] +
+          selected_mat[, 1:ncol_common, drop = FALSE]
+      }
+
+      total_fits <- total_fits + 1
+    }
+  }
+
+  # selection probabilities
+  sel_prob <- sel_count_any / total_fits
+  names(sel_prob) <- colnames(x)
+
+  # per-lambda selection probability curves
+  sel_prob_by_lambda <- sel_count_by_lambda / total_fits
+  rownames(sel_prob_by_lambda) <- colnames(x)
+
+  # stable variables
+  stable_vars <- names(which(sel_prob >= cutoff))
+
+  list(
+    sel_prob = sel_prob,
+    sel_prob_by_lambda = sel_prob_by_lambda,
+    stable = stable_vars,
+    cutoff = cutoff,
+    nsub = nsub,
+    total_fits = total_fits
+  )
+}
+
+res <- stabsel_cox_2(
+  x = x_mat,
+  y = with(easy_test, Surv(time = x, time2 = y, event = event)),
+  nsub = 30
+)
+
+plot_stabsel_cox <- function(result, top_n = NULL) {
+  mat <- result$sel_prob_by_lambda
+  if (!is.null(top_n)) {
+    top_vars <- names(sort(result$sel_prob, decreasing = TRUE))[
+      1:min(top_n, nrow(mat))
+    ]
+    mat <- mat[top_vars, , drop = FALSE]
+  }
+
+  cols <- rainbow(nrow(mat))
+  plot(
+    NULL,
+    xlim = c(1, ncol(mat)),
+    ylim = c(0, 1),
+    xlab = "Lambda index (most to least regularised)",
+    ylab = "Selection probability",
+    main = "Stability selection paths"
+  )
+  abline(h = result$cutoff, lty = 2, col = "grey40")
+  for (j in seq_len(nrow(mat))) {
+    lines(seq_len(ncol(mat)), mat[j, ], col = cols[j], lwd = 1.5)
+  }
+  legend(
+    "topleft",
+    legend = rownames(mat),
+    col = cols,
+    lwd = 1.5,
+    cex = 0.7,
+    ncol = 2,
+    bg = "white"
+  )
+}
+
+plot_stabsel_cox(res)
+
+
+library(glmnet)
+library(survival)
+
+stabsel_cox_3 <- function(
+  x,
+  y,
+  nsub = 100,
+  frac = 0.5,
+  cutoff = 0.75,
+  lambda_rule = "lambda.1se",
+  nfolds = 5,
+  ...
+) {
+  # x: predictor matrix
+  # y: Surv object
+  # nsub: number of subsamples
+  # frac: fraction of data per subsample (0.5 for complementary pairs)
+  # cutoff: selection probability threshold
+  # lambda_rule: "lambda.min" or "lambda.1se" from cv.glmnet
+  # nfolds: number of CV folds within each subsample
+
+  n <- nrow(x)
+  p <- ncol(x)
+  sub_size <- floor(n * frac)
+
+  sel_count <- rep(0, p)
+  names(sel_count) <- colnames(x)
+  total_fits <- 0
+
+  for (i in seq_len(nsub)) {
+    perm <- sample(n)
+    half1 <- perm[1:sub_size]
+    half2 <- perm[(sub_size + 1):(2 * sub_size)]
+
+    for (half in list(half1, half2)) {
+      cvfit <- tryCatch(
+        cv.glmnet(
+          x[half, , drop = FALSE],
+          y[half, ],
+          family = "cox",
+          nfolds = nfolds,
+          ...
+        ),
+        error = function(e) NULL
+      )
+      if (is.null(cvfit)) {
+        next
+      }
+
+      # extract coefficients at the CV-chosen lambda
+      beta <- as.numeric(coef(cvfit, s = lambda_rule))
+      sel_count <- sel_count + (beta != 0)
+      total_fits <- total_fits + 1
+    }
+
+    # progress
+    if (i %% 10 == 0) {
+      cat(sprintf("Completed %d / %d subsample pairs\n", i, nsub))
+    }
+  }
+
+  sel_prob <- sel_count / total_fits
+  stable_vars <- names(which(sel_prob >= cutoff))
+
+  list(
+    sel_prob = sel_prob,
+    stable = stable_vars,
+    cutoff = cutoff,
+    nsub = nsub,
+    total_fits = total_fits
+  )
+}
+
+# --- plotting helper ---
+plot_stabsel_cox <- function(result) {
+  probs <- sort(result$sel_prob, decreasing = TRUE)
+  barplot(
+    probs,
+    las = 2,
+    ylim = c(0, 1),
+    ylab = "Selection probability",
+    main = "Stability selection (Cox, CV lambda)",
+    col = ifelse(probs >= result$cutoff, "steelblue", "grey70"),
+    border = NA
+  )
+  abline(h = result$cutoff, lty = 2, col = "red", lwd = 1.5)
+  legend(
+    "topright",
+    legend = c("Stable", "Not stable", paste0("Cutoff = ", result$cutoff)),
+    fill = c("steelblue", "grey70", NA),
+    border = NA,
+    lty = c(NA, NA, 2),
+    col = c(NA, NA, "red"),
+    lwd = c(NA, NA, 1.5),
+    bg = "white"
+  )
+}
+
+
+res <- stabsel_cox_3(
+  x = x_mat,
+  y = with(easy_test, Surv(time = x, time2 = y, event = event)),
+  nsub = 30
+)
+
+
+# --- example usage ---
+set.seed(42)
+n <- 200
+p <- 20
+X <- matrix(rnorm(n * p), n, p)
+colnames(X) <- paste0("x", 1:p)
+true_beta <- c(1, -0.8, 0.6, rep(0, p - 3))
+lp <- X %*% true_beta
+time <- rexp(n, rate = exp(lp))
+cens <- rexp(n, rate = 0.3)
+y <- Surv(pmin(time, cens), as.numeric(time <= cens))
+
+result <- stabsel_cox(
+  X,
+  y,
+  nsub = 100,
+  cutoff = 0.75,
+  lambda_rule = "lambda.1se"
+)
+
+cat("\nStable variables:\n")
+print(result$stable)
+
+cat("\nSelection probabilities (sorted):\n")
+print(round(sort(result$sel_prob, decreasing = TRUE), 3))
+
+cat(sprintf("\nTotal successful fits: %d\n", result$total_fits))
+
+plot_stabsel_cox(result)

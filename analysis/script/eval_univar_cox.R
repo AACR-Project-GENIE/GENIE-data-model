@@ -77,50 +77,90 @@ eval_wrapper_cox <- function(sim_data) {
   
   
   # add several bias metrics in:
-  sim_data %<>%
-    mutate(
-      bias_dat = purrr::map2(
-        .x = beta_valid,
-        .y = coef_est,
-        .f = (function(b, c) {
-          eval_beta_bias(
-            true_beta_valid = b,
-            coef_dat = c
-          )
-        })
-      )
-    ) %>%
-    unnest(bias_dat)
+  # sim_data %<>%
+  #   mutate(
+  #     bias_dat = purrr::map2(
+  #       .x = beta_valid,
+  #       .y = coef_est,
+  #       .f = (function(b, c) {
+  #         eval_beta_bias(
+  #           true_beta_valid = b,
+  #           coef_dat = c
+  #         )
+  #       })
+  #     )
+  #   ) %>%
+  #   unnest(bias_dat)
   
   sim_data %<>%
     mutate(
-      coef_2x2_dat = purrr::map2(
+      beta_dat = purrr::map2(
         .x = beta_valid,
         .y = coef_est,
         .f = (function(b, c) {
-          eval_coef_2x2_cox(
-            true_beta_valid = b,
-            coef_dat = c
+         eval_beta_df_uni_cox(
+            beta_valid = b,
+            coef_est = c
+          )
+        })
+      )
+    )
+  # beta_df does not get unnested, it's a processing step.
+  
+  sim_data %<>%
+    mutate(
+      coef_2x2_dat = purrr::map(
+        .x = beta_dat,
+        .f = (function(b) {
+          eval_coef_2x2(
+            beta_dat = b
           )
         })
       )
     ) %>%
     unnest(coef_2x2_dat)
   
+  sim_data %<>%
+    mutate(
+      power = eval_power(tp_beta = tp_beta, fn_beta = fn_beta),
+      selectivity = eval_selectivity(tn_beta = tn_beta, fp_beta = fp_beta)
+    )
+  
+  sim_data %<>%
+    mutate(
+      avg_abs_bias = purrr::map_dbl(
+        .x = beta_dat,
+        .f = \(b) eval_avg_bias(b, absolute = T, inclusion = "all")
+      ),
+      avg_abs_bias_selected = purrr::map_dbl(
+        .x = beta_dat,
+        .f = \(b) eval_avg_bias(b, absolute = T, inclusion = "selected")
+      ),
+       # don't really need these, but they can be calculated easily enough:
+      avg_bias = purrr::map_dbl(
+        .x = beta_dat,
+        .f = \(b) eval_avg_bias(b, absolute = F, inclusion = "all")
+      ),
+      avg_bias_selected = purrr::map_dbl(
+        .x = beta_dat,
+        .f = \(b) eval_avg_bias(b, absolute = F, inclusion = "selected")
+      )
+    )
+  
   return(sim_data)
   
 }
-  
+
 # Where the actual work is done:
 sim_n80 %<>% eval_wrapper_cox(.)
 sim_n500 %<>% eval_wrapper_cox(.)
 
-sim_n80 %>% summarize(
-  tp = mean(tp_coef, na.rm = T), 
-  fp = mean(fp_coef, na.rm = T),
-  tn = mean(tn_coef, na.rm = T),
-  fn = mean(fn_coef, na.rm = T)
-)
+# sim_n80 %>% summarize(
+#   tp = mean(tp_beta, na.rm = T), 
+#   fp = mean(fp_beta, na.rm = T),
+#   tn = mean(tn_beta, na.rm = T),
+#   fn = mean(fn_beta, na.rm = T)
+# )
     
 
 

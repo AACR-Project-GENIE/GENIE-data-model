@@ -17,18 +17,23 @@ gg_abs_bias <- plot_one_sim_metric(
   x_var = "avg_abs_bias",
   x_lab = "Avg. absolute bias (logHR)"
 ) + 
-  labs(title = "Average absolute bias over all coefficients",
+  labs(title = "Average absolute bias (all coefficients)",
        subtitle = "Each point is one simulation") +
   theme(
     plot.title.position = 'plot'
   )
 
-gg_bias <- plot_one_sim_metric(
+gg_abs_bias_selected <- plot_one_sim_metric(
   dat_sim_all = sim_sum_all,
   dat_sim_avg = sim_sum_avg,
-  x_var = "avg_bias",
-  x_lab = "Bias (logHR scale)"
-) 
+  x_var = "avg_abs_bias_selected",
+  x_lab = "Avg. absolute bias"
+) + 
+  labs(title = "Average absolute bias (SELECTED coefficients)",
+       subtitle = "Each point is one simulation") +
+  theme(
+    plot.title.position = 'plot'
+  )
   
 ggsave(
   plot = gg_abs_bias,
@@ -41,12 +46,19 @@ ggsave(
   filename = here('output', 'fig', 'gg_abs_bias.jpeg'),
   height = 4, width = 6
 )
+
+ggsave(
+  plot = gg_abs_bias_selected,
+  filename = here('output', 'fig', 'gg_abs_bias_selected.pdf'),
+  height = 4, width = 6
+)
+
+ggsave(
+  plot = gg_abs_bias_selected,
+  filename = here('output', 'fig', 'gg_abs_bias_selected.jpeg'),
+  height = 4, width = 6
+)
   
-# cowplot::plot_grid(
-#   gg_bias,
-#   gg_abs_bias,
-#   ncol = 1
-# )
 
 
 
@@ -56,13 +68,14 @@ ggsave(
 
 
 
-
-gg_bias_no_cox <- gg_bias +
-  coord_cartesian(xlim = c(-1,1))
 
 gg_abs_bias_no_cox <- gg_abs_bias +
   coord_cartesian(xlim = c(0,1)) + 
   labs(title = "Average absolute bias over all coefficients (zoomed)")
+
+gg_abs_bias_selected_no_cox <- gg_abs_bias_selected +
+  coord_cartesian(xlim = c(0,1)) + 
+  labs(title = "Average absolute bias over selected coefficients (zoomed)")
 
 ggsave(
   plot = gg_abs_bias_no_cox,
@@ -76,12 +89,68 @@ ggsave(
   height = 4, width = 6
 )
 
+ggsave(
+  plot = gg_abs_bias_selected_no_cox,
+  filename = here('output', 'fig', 'gg_abs_bias_selected_zoom.pdf'),
+  height = 4, width = 6
+)
 
-# cowplot::plot_grid(
-#   gg_bias_no_cox,
-#   gg_abs_bias_no_cox,
-#   ncol = 1
-# )
+ggsave(
+  plot = gg_abs_bias_selected_no_cox,
+  filename = here('output', 'fig', 'gg_abs_bias_selected_zoom.jpeg'),
+  height = 4, width = 6
+)
+
+
+
+
+
+
+gg_power_selectivity <- ggplot(
+  data = sim_sum_avg,
+  aes(
+    y = power, x = selectivity, color = analysis_method_f
+  )
+) +
+  theme_bw() + 
+  geom_point(
+    data = sim_sum_avg, stroke = 1,
+    size = 3, alpha = 0.7
+  ) +
+  facet_wrap(vars(n_lab), scales = "free_x") +
+  scale_color_vibrant(
+    name = 'Analysis Method'
+  ) +
+  scale_x_continuous(limits = c(0,1), expand = c(0,0)) +
+  scale_y_continuous(limits = c(0,1), expand = c(0,0)) +
+  # coord_cartesian(xlim = c(1,0), ylim = c(0,1)) +
+  theme(
+    legend.position = "bottom",
+    axis.title.y = element_markdown(angle = 0, vjust = 0.5),
+    plot.title.position = 'plot'
+  )  + 
+  labs(
+     x = "Selectivity (1 - Type I error rate)",
+     y = "Power<br>(1 - Type II error rate)",
+     title = "Average performance over all simulations",
+     subtitle = "Ideal performance = top right"
+  )
+
+gg_power_selectivity
+
+ggsave(
+  plot = gg_power_selectivity,
+  filename = here('output', 'fig', 'gg_power_selectivity.pdf'),
+  height = 4, width = 10
+)
+
+ggsave(
+  plot = gg_power_selectivity,
+  filename = here('output', 'fig', 'gg_power_selectivity.jpeg'),
+  height = 4, width = 10
+)
+
+    
 
 
 
@@ -120,3 +189,5 @@ gg_sens_spec <- ggplot(
 
 gg_sens_spec
 
+
+sim_sum_avg %>% glimpse

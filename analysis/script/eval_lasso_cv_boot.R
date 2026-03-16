@@ -6,14 +6,12 @@ library(purrr)
 
 purrr::walk(.x = fs::dir_ls('R'), .f = source)
 
-cli::cli_alert_danger("Loading the first 200 reps only (pilot)")
-
 sim_n80 <- readr::read_rds(
-  here('sim', 'run_methods', 'gen_dat_one_n80_lasso_cv_boot_f200.rds')
+  here('sim', 'run_methods', 'gen_dat_one_n80_lasso_cv_boot.rds')
 )
 
 sim_n500 <- readr::read_rds(
-  here('sim', 'run_methods', 'gen_dat_one_n500_lasso_cv_boot_f200.rds')
+  here('sim', 'run_methods', 'gen_dat_one_n500_lasso_cv_boot.rds')
 )
 
 STABILITY_THRESH <- 0.2
@@ -42,23 +40,6 @@ if (!("coef_est" %in% colnames(sim_n80))) {
   
 }
 
-# test_beta <- sim_n80 %>% slice(1) %>% pull(beta) %>% `[[`(.,1)
-# test_coef_dat <- sim_n80 %>% slice(1) %>% pull(coef_est) %>% `[[`(.,1)
-# eval_sens_at_thresh(
-#   true_beta = test_beta,
-#   coef_dat = test_coef_dat,
-#   thresh_param = "stability",
-#   thresh_to_test = 0.5,
-#   low_thresh_good = F
-# )
-# eval_spec_at_thresh(
-#   true_beta = test_beta,
-#   coef_dat = test_coef_dat,
-#   thresh_param = "stability",
-#   thresh_to_test = 0.5,
-#   low_thresh_good = F
-# )
-
 
 ###########################
 # Add in AUC calculation: #
@@ -80,21 +61,21 @@ eval_wrap_lasso_cv_boot <- function(sim_data) {
       )
     )
   
-  sim_data %<>%
-    # add several bias metrics in:
-    mutate(
-      bias_dat = purrr::map2(
-        .x = beta_valid,
-        .y = coef_est,
-        .f = (function(b, c) {
-          eval_beta_bias(
-            true_beta_valid = b,
-            coef_dat = c
-          )
-        })
-      )
-    ) %>%
-    unnest(bias_dat)
+  # sim_data %<>%
+  #   # add several bias metrics in:
+  #   mutate(
+  #     bias_dat = purrr::map2(
+  #       .x = beta_valid,
+  #       .y = coef_est,
+  #       .f = (function(b, c) {
+  #         eval_beta_bias(
+  #           true_beta_valid = b,
+  #           coef_dat = c
+  #         )
+  #       })
+  #     )
+  #   ) %>%
+  #   unnest(bias_dat)
   
   sim_data %<>%
     mutate(
@@ -131,10 +112,67 @@ eval_wrap_lasso_cv_boot <- function(sim_data) {
       )
     )
   
+  sim_data %<>%
+    mutate(
+      beta_dat = purrr::map2(
+        .x = beta_valid,
+        .y = coef_est,
+        .f = (function(b, c) {
+          eval_beta_df_lasso_boot(
+            beta_valid = b,
+            coef_est = c,
+            select_thresh = STABILITY_THRESH
+          )
+        })
+      )
+    )
+  # beta_df does not get unnested, it's a processing step.
+  
+  sim_data %<>%
+    mutate(
+      coef_2x2_dat = purrr::map(
+        .x = beta_dat,
+        .f = (function(b) {
+          eval_coef_2x2(
+            beta_dat = b
+          )
+        })
+      )
+    ) %>%
+    unnest(coef_2x2_dat)
+  
+  sim_data %<>%
+    mutate(
+      power = eval_power(tp_beta = tp_beta, fn_beta = fn_beta),
+      selectivity = eval_selectivity(tn_beta = tn_beta, fp_beta = fp_beta)
+    )
+  
+  sim_data %<>%
+    mutate(
+      avg_abs_bias = purrr::map_dbl(
+        .x = beta_dat,
+        .f = \(b) eval_avg_bias(b, absolute = T, inclusion = "all")
+      ),
+      avg_abs_bias_selected = purrr::map_dbl(
+        .x = beta_dat,
+        .f = \(b) eval_avg_bias(b, absolute = T, inclusion = "selected")
+      ),
+      # don't really need these, but they can be calculated easily enough:
+      avg_bias = purrr::map_dbl(
+        .x = beta_dat,
+        .f = \(b) eval_avg_bias(b, absolute = F, inclusion = "all")
+      ),
+      avg_bias_selected = purrr::map_dbl(
+        .x = beta_dat,
+        .f = \(b) eval_avg_bias(b, absolute = F, inclusion = "selected")
+      )
+    )
+  
   return(sim_data)
   
 } 
-  
+
+
 
 sim_n80 %<>% eval_wrap_lasso_cv_boot(.)
 sim_n500 %<>% eval_wrap_lasso_cv_boot(.)
@@ -143,12 +181,12 @@ sim_n500 %<>% eval_wrap_lasso_cv_boot(.)
 
 readr::write_rds(
   x = sim_n80,
-  file = here('sim', 'evaled_methods', 'gen_dat_one_n80_lasso_cv_boot_f200.rds')
+  file = here('sim', 'evaled_methods', 'gen_dat_one_n80_lasso_cv_boot.rds')
 )
 
 readr::write_rds(
   x = sim_n500,
-  file = here('sim', 'evaled_methods', 'gen_dat_one_n500_lasso_cv_boot_f200.rds')
+  file = here('sim', 'evaled_methods', 'gen_dat_one_n500_lasso_cv_boot.rds')
 )
 
 
