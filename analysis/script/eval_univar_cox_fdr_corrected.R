@@ -87,7 +87,8 @@ eval_wrapper_cox <- function(sim_data) {
         .f = (function(b, c) {
           eval_beta_df_uni_cox(
             beta_valid = b,
-            coef_est = c
+            coef_est = c,
+            decision_column = 'q.value'
           )
         })
       )
