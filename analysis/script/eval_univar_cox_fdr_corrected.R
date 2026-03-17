@@ -149,6 +149,9 @@ sim_n500 %<>% eval_wrapper_cox(.)
 #   fn = mean(fn_beta, na.rm = T)
 # )
 
+sim_n80 %<>% mutate(analysis_method = "method_univar_cox_fdr")
+sim_n500 %<>% mutate(analysis_method = "method_univar_cox_fdr")
+
 readr::write_rds(
   x = sim_n80,
   file = here('sim', 'evaled_methods', 'gen_dat_one_n80_cox_uni_fdr.rds')
