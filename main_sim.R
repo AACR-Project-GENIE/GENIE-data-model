@@ -27,4 +27,4 @@ source(here('analysis', 'script', 'eval_lasso_cv_boot.R'))
 
 # Combine all the simluation evaluations for display
 source(here('analysis', 'script', 'combine_sim_evals.R'))
-source(here('analysis', 'script', 'upload_sim_data_backup.R'))
+source(here('analysis', 'script', 'create_figs_simple.R'))

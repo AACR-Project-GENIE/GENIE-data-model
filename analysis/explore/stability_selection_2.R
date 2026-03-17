@@ -42,7 +42,7 @@ easy_covar <- expand_grid(
   select(-id) # added again below.
 
 # a1 and a2 have strong effects, betas have none.
-easy_beta <- c(-1, 1, rep(0, times = n_junk_var))
+easy_beta <- c(-0.5, 0.5, rep(0, times = n_junk_var))
 names(easy_beta) <- colnames(easy_covar)
 
 easy_test <- gen_data_one(
@@ -408,39 +408,17 @@ plot_stabsel_cox <- function(result) {
 }
 
 
-res <- stabsel_cox_3(
+res3 <- stabsel_cox_3(
   x = x_mat,
   y = with(easy_test, Surv(time = x, time2 = y, event = event)),
   nsub = 30
 )
 
-
-# --- example usage ---
-set.seed(42)
-n <- 200
-p <- 20
-X <- matrix(rnorm(n * p), n, p)
-colnames(X) <- paste0("x", 1:p)
-true_beta <- c(1, -0.8, 0.6, rep(0, p - 3))
-lp <- X %*% true_beta
-time <- rexp(n, rate = exp(lp))
-cens <- rexp(n, rate = 0.3)
-y <- Surv(pmin(time, cens), as.numeric(time <= cens))
-
-result <- stabsel_cox(
-  X,
-  y,
+res_opt <- stabsel_cox_q_options(
+  x_mat,
+  with(easy_test, Surv(time = x, time2 = y, event = event)),
   nsub = 100,
   cutoff = 0.75,
-  lambda_rule = "lambda.1se"
+  PFER = 1,
+  lambda_method = "q_cap"
 )
-
-cat("\nStable variables:\n")
-print(result$stable)
-
-cat("\nSelection probabilities (sorted):\n")
-print(round(sort(result$sel_prob, decreasing = TRUE), 3))
-
-cat(sprintf("\nTotal successful fits: %d\n", result$total_fits))
-
-plot_stabsel_cox(result)
