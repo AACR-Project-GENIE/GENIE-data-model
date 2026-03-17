@@ -16,7 +16,7 @@ eval_beta_df_uni_cox <- function(
 
   rtn <- left_join(
     rtn,
-    select(coef_est, term, estimate, .data[[decision_column]]),
+    select(coef_est, term, estimate, all_of(decision_column)),
     by = 'term'
   )
 
@@ -29,7 +29,7 @@ eval_beta_df_uni_cox <- function(
     )
 
   if (!keep_select_criterion) {
-    rtn %<>% select(-vars(decision_column))
+    rtn %<>% select(-any_of(decision_column))
   }
 
   rtn %<>%
