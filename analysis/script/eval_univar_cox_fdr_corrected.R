@@ -52,7 +52,7 @@ eval_wrapper_cox <- function(sim_data) {
           eval_spec_at_thresh(
             true_beta = b,
             coef_dat = c,
-            thresh_param = "p.value",
+            thresh_param = "q.value",
             thresh_to_test = 0.05,
             low_thresh_good = T
           )
@@ -63,7 +63,7 @@ eval_wrapper_cox <- function(sim_data) {
   # Add specificity at the traditional p = 0.05
   sim_data %<>%
     mutate(
-      sens_thresh = "p=0.05",
+      sens_thresh = "q=0.05",
       sens_at_thresh = purrr::map2_dbl(
         .x = beta_valid,
         .y = coef_est,
@@ -71,29 +71,13 @@ eval_wrapper_cox <- function(sim_data) {
           eval_sens_at_thresh(
             true_beta = b,
             coef_dat = c,
-            thresh_param = "p.value",
+            thresh_param = "q.value",
             thresh_to_test = 0.05,
             low_thresh_good = T
           )
         })
       )
     )
-
-  # add several bias metrics in:
-  # sim_data %<>%
-  #   mutate(
-  #     bias_dat = purrr::map2(
-  #       .x = beta_valid,
-  #       .y = coef_est,
-  #       .f = (function(b, c) {
-  #         eval_beta_bias(
-  #           true_beta_valid = b,
-  #           coef_dat = c
-  #         )
-  #       })
-  #     )
-  #   ) %>%
-  #   unnest(bias_dat)
 
   sim_data %<>%
     mutate(
