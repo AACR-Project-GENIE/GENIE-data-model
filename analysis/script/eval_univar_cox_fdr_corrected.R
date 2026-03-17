@@ -19,6 +19,10 @@ sim_n500 <- readr::read_rds(
 # test_coef_dat <- sim_n80 %>% slice(2) %>% pull(coef_est) %>% `[[`(.,1)
 # test_gen_dat <- sim_n80 %>% slice(2) %>% pull(gen_dat_valid) %>% `[[`(.,1)
 
+# add the q values in :
+sim_n80 %<>% mutate(coef_est = purrr::map(.x = coef_est, .y = add_qval))
+sim_n500 %<>% mutate(coef_est = purrr::map(.x = coef_est, .y = add_qval))
+
 eval_wrapper_cox <- function(sim_data) {
   # Add auc:
   sim_data %<>%
