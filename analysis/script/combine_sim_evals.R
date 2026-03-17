@@ -77,7 +77,7 @@ sim_sum_all <- bind_rows(
 
 lev_meth <- c(
   "Univariate models",
-  "Univar (FDR adj.)"
+  "Univar (FDR adj.)",
   "LASSO (5-CV)",
   "LASSO (LOOCV)",
   "LASSO (5-CV boot)"
@@ -105,7 +105,7 @@ sim_sum_all %<>%
   mutate(
     analysis_method_f = case_when(
       analysis_method %in% "method_univar_cox" ~ lev_meth[1],
-      analysis_method %in% "method_univar_cox" ~ lev_meth[1],
+      analysis_method %in% "method_univar_cox_fdr" ~ lev_meth[2],
       analysis_method %in% "method_lasso_5fcv" ~ lev_meth[3],
       analysis_method %in% "method_lasso_loocv" ~ lev_meth[4],
       analysis_method %in% "method_lasso_cv_boot" ~ lev_meth[5]
