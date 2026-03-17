@@ -150,11 +150,11 @@ sim_n500 %<>% eval_wrapper_cox(.)
 
 readr::write_rds(
   x = sim_n80,
-  file = here('sim', 'evaled_methods', 'gen_dat_one_n80_cox_uni.rds')
+  file = here('sim', 'evaled_methods', 'gen_dat_one_n80_cox_uni_fdr.rds')
 )
 
 
 readr::write_rds(
   x = sim_n500,
-  file = here('sim', 'evaled_methods', 'gen_dat_one_n500_cox_uni.rds')
+  file = here('sim', 'evaled_methods', 'gen_dat_one_n500_cox_uni_fdr.rds')
 )
