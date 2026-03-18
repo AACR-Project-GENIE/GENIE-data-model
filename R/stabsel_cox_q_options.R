@@ -1,6 +1,20 @@
 library(glmnet)
 library(survival)
-
+#' Stability selection for Cox regression using glmnet
+#'
+#' @param x Predictor matrix
+#' @param y Surv object
+#' @param nsub Number of subsamples
+#' @param frac Fraction of data per subsample (0.5 for complementary pairs)
+#' @param cutoff Selection probability threshold (pi_thr)
+#' @param PFER Desired per-family error rate bound (expected number of false selections)
+#' @param q Max variables selected per subsample. If NULL, derived from PFER.
+#' @param lambda_method One of \code{"q_cap"} (pick the lambda giving <= q nonzero
+#'   coefficients, pure M&B), \code{"cv_cap"} (use cv.glmnet lambda, but cap at q
+#'   variables if it exceeds), or \code{"cv_only"} (use cv.glmnet lambda with no cap,
+#'   no formal PFER guarantee)
+#' @param nfolds CV folds (only used if lambda_method involves cv)
+#' @param ... Additional arguments passed to \code{glmnet}
 stabsel_cox_q_options <- function(
   x,
   y,
@@ -13,25 +27,11 @@ stabsel_cox_q_options <- function(
   nfolds = 5,
   ...
 ) {
-  # x: predictor matrix
-  # y: Surv object
-  # nsub: number of subsamples
-  # frac: fraction of data per subsample (0.5 for complementary pairs)
-  # cutoff: selection probability threshold (pi_thr)
-  # PFER: desired per-family error rate bound (expected number of false selections)
-  # q: max variables selected per subsample. If NULL, derived from PFER.
-  # lambda_method:
-  #   "q_cap"  — pick the lambda giving <= q nonzero coefficients (pure M&B)
-  #   "cv_cap" — use cv.glmnet lambda, but cap at q variables if it exceeds
-  #   "cv_only" — use cv.glmnet lambda with no cap (no formal PFER guarantee)
-  # nfolds: CV folds (only used if lambda_method involves cv)
-
   lambda_method <- match.arg(lambda_method)
   n <- nrow(x)
   p <- ncol(x)
   sub_size <- floor(n * frac)
 
-  # --- derive q from PFER bound ---
   # Meinshausen & Buhlmann (2010), Theorem 1:
   #   E(V) <= q^2 / ((2*cutoff - 1) * p)
   # Solving for q:
@@ -160,62 +160,3 @@ plot_stabsel_cox <- function(result) {
     bg = "white"
   )
 }
-#
-# # --- example usage ---
-# set.seed(42)
-# n <- 200
-# p <- 20
-# X <- matrix(rnorm(n * p), n, p)
-# colnames(X) <- paste0("x", 1:p)
-# true_beta <- c(1, -0.8, 0.6, rep(0, p - 3))
-# lp <- X %*% true_beta
-# time <- rexp(n, rate = exp(lp))
-# cens <- rexp(n, rate = 0.3)
-# y <- Surv(pmin(time, cens), as.numeric(time <= cens))
-#
-# # --- Option 1: pure M&B with q cap (formal PFER guarantee) ---
-# cat("=== q_cap method (formal PFER control) ===\n")
-# res1 <- stabsel_cox_q_options(
-#   X,
-#   y,
-#   nsub = 100,
-#   cutoff = 0.75,
-#   PFER = 1,
-#   lambda_method = "q_cap"
-# )
-# cat("\nStable variables:\n")
-# print(res1$stable)
-# cat("\nSelection probabilities:\n")
-# print(round(sort(res1$sel_prob, decreasing = TRUE), 3))
-#
-# # --- Option 2: cv.glmnet with q cap (cv-informed but still PFER valid) ---
-# cat("\n\n=== cv_cap method (CV with PFER fallback) ===\n")
-# res2 <- stabsel_cox(
-#   X,
-#   y,
-#   nsub = 100,
-#   cutoff = 0.75,
-#   PFER = 1,
-#   lambda_method = "cv_cap"
-# )
-# cat("\nStable variables:\n")
-# print(res2$stable)
-# cat("\nSelection probabilities:\n")
-# print(round(sort(res2$sel_prob, decreasing = TRUE), 3))
-#
-# # --- Option 3: cv.glmnet only (no formal guarantee, for comparison) ---
-# cat("\n\n=== cv_only method (no formal PFER control) ===\n")
-# res3 <- stabsel_cox(
-#   X,
-#   y,
-#   nsub = 100,
-#   cutoff = 0.75,
-#   PFER = 1,
-#   lambda_method = "cv_only"
-# )
-# cat("\nStable variables:\n")
-# print(res3$stable)
-# cat("\nSelection probabilities:\n")
-# print(round(sort(res3$sel_prob, decreasing = TRUE), 3))
-#
-# # plot whichever you prefer
