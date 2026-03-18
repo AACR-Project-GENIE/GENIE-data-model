@@ -422,3 +422,9 @@ res_opt <- stabsel_cox_q_options(
   PFER = 1,
   lambda_method = "q_cap"
 )
+res_opt
+
+plot_stabsel_cox(res_opt)
+
+# Todo: return coefs from the model doing this.
+# cut it up to work with my sims.
