@@ -219,4 +219,3 @@ plot_stabsel_cox <- function(result) {
 # print(round(sort(res3$sel_prob, decreasing = TRUE), 3))
 #
 # # plot whichever you prefer
-plot_stabsel_cox(res1)
