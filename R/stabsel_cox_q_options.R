@@ -13,7 +13,7 @@ library(survival)
 #'   coefficients, pure M&B), \code{"cv_cap"} (use cv.glmnet lambda, but cap at q
 #'   variables if it exceeds), or \code{"cv_only"} (use cv.glmnet lambda with no cap,
 #'   no formal PFER guarantee)
-#' @param nfolds CV folds (only used if lambda_method involves cv)
+#' @param verbose Verbose = TRUE prints some messages to the console.
 #' @param ... Additional arguments passed to \code{glmnet}
 stabsel_cox_q_options <- function(
   x,
@@ -25,6 +25,7 @@ stabsel_cox_q_options <- function(
   q = NULL,
   lambda_method = c("q_cap", "cv_cap", "cv_only"),
   nfolds = 5,
+  verbose = TRUE,
   ...
 ) {
   lambda_method <- match.arg(lambda_method)
@@ -47,9 +48,13 @@ stabsel_cox_q_options <- function(
   # recompute the actual PFER bound given q, cutoff, p
   pfer_bound <- q^2 / ((2 * cutoff - 1) * p)
 
-  cat(sprintf("Settings: p = %d, q = %d, cutoff = %.2f\n", p, q, cutoff))
-  cat(sprintf("PFER bound (E[false selections] <=): %.3f\n", pfer_bound))
-  cat(sprintf("Lambda method: %s\n\n", lambda_method))
+  if (verbose) {
+    cli::cli_inform(c(
+      "i" = "Settings: p = {p}, q = {q}, cutoff = {cutoff}",
+      "i" = "PFER bound (E[false selections] <=): {round(pfer_bound, 3)}",
+      "i" = "Lambda method: {lambda_method}"
+    ))
+  }
 
   sel_count <- rep(0, p)
   names(sel_count) <- colnames(x)
@@ -66,41 +71,19 @@ stabsel_cox_q_options <- function(
 
       selected <- tryCatch(
         {
-          if (lambda_method == "q_cap") {
-            # fit full path, pick lambda with <= q nonzero coefficients
-            fit <- glmnet(xs, ys, family = "cox", ...)
-            beta <- as.matrix(coef(fit))
-            nvar <- colSums(beta != 0)
-            valid <- which(nvar <= q)
-            if (length(valid) == 0) {
-              # even the most regularised solution has > q vars; take it anyway
-              idx <- 1
-            } else {
-              idx <- max(valid) # least regularised with <= q vars
-            }
-            as.numeric(beta[, idx] != 0)
-          } else if (lambda_method == "cv_cap") {
-            # use cv.glmnet, but enforce q cap
-            cvfit <- cv.glmnet(xs, ys, family = "cox", nfolds = nfolds, ...)
-            beta_cv <- as.numeric(coef(cvfit, s = "lambda.1se"))
-            n_selected <- sum(beta_cv != 0)
-            if (n_selected <= q) {
-              as.numeric(beta_cv != 0)
-            } else {
-              # cv selected too many; fall back to q cap on the full path
-              fit <- cvfit$glmnet.fit
-              beta <- as.matrix(coef(fit))
-              nvar <- colSums(beta != 0)
-              valid <- which(nvar <= q)
-              idx <- if (length(valid) == 0) 1 else max(valid)
-              as.numeric(beta[, idx] != 0)
-            }
+          # fit full path, pick lambda with <= q nonzero coefficients
+          fit <- glmnet(xs, ys, family = "cox", ...)
+          beta <- as.matrix(coef(fit))
+          nvar <- colSums(beta != 0)
+          valid <- which(nvar <= q)
+          if (length(valid) == 0) {
+            cli::cli_warn("Even the most regularized version had > q vars.")
+            # even the most regularised solution has > q vars; take it anyway
+            idx <- 1
           } else {
-            # cv_only — no cap, no PFER guarantee
-            cvfit <- cv.glmnet(xs, ys, family = "cox", nfolds = nfolds, ...)
-            beta_cv <- as.numeric(coef(cvfit, s = "lambda.1se"))
-            as.numeric(beta_cv != 0)
+            idx <- max(valid) # least regularised with <= q vars
           }
+          as.numeric(beta[, idx] != 0)
         },
         error = function(e) NULL
       )
@@ -113,12 +96,14 @@ stabsel_cox_q_options <- function(
       total_fits <- total_fits + 1
     }
 
-    if (i %% 10 == 0) {
+    if (i %% 10 == 0 & verbose) {
       cat(sprintf("Completed %d / %d subsample pairs\n", i, nsub))
     }
   }
 
   sel_prob <- sel_count / total_fits
+  print(sel_count)
+  print(sel_prob)
   stable_vars <- names(which(sel_prob >= cutoff))
 
   list(
