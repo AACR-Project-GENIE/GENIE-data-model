@@ -97,9 +97,8 @@ stabsel_cox_q_options <- function(
         next
       }
 
-      if (i %in% 1) {
+      if (i %in% 1 & half == half1) {
         beta_at_q <- matrix(rtn$beta, nrow = 1)
-        names(beta_at_q) <- colnames(x)
       } else {
         beta_at_q <- rbind(beta_at_q, matrix(rtn$beta, nrow = 1))
       }
@@ -111,6 +110,8 @@ stabsel_cox_q_options <- function(
       cat(sprintf("Completed %d / %d subsample pairs\n", i, nsub))
     }
   }
+
+  colnames(beta_at_q) <- colnames(x)
 
   sel_prob <- sel_count / total_fits
   stable_vars <- names(which(sel_prob >= cutoff))

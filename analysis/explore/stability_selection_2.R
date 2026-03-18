@@ -81,12 +81,12 @@ coef(cv.glmnet(
 res_opt <- stabsel_cox_q_options(
   x_mat,
   with(easy_test, Surv(time = x, time2 = y, event = event)),
-  nsub = 10,
+  nsub = 100,
   cutoff = 0.75,
   PFER = 1,
   lambda_method = "q_cap"
 )
-res_opt$beta_at_q
+mean_beta <- res_opt$beta_at_q %>% colMeans(.)
 
 plot_stabsel_cox(res_opt)
 
