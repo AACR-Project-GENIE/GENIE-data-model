@@ -86,7 +86,7 @@ res_opt <- stabsel_cox_q_options(
   PFER = 1,
   lambda_method = "q_cap"
 )
-res_opt
+res_opt$beta_at_q
 
 plot_stabsel_cox(res_opt)
 

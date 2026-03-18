@@ -69,7 +69,7 @@ stabsel_cox_q_options <- function(
       xs <- x[half, , drop = FALSE]
       ys <- y[half, ]
 
-      selected <- tryCatch(
+      rtn <- tryCatch(
         {
           # fit full path, pick lambda with <= q nonzero coefficients
           fit <- glmnet(xs, ys, family = "cox", ...)
@@ -83,15 +83,26 @@ stabsel_cox_q_options <- function(
           } else {
             idx <- max(valid) # least regularised with <= q vars
           }
-          as.numeric(beta[, idx] != 0)
+          # cli_abort(
+          #   "need to figure out a way to get the betas in an organized way from the row with optimal lambda given q restriction"
+          # )
+          list(beta = beta[, idx], selected = as.numeric(beta[, idx] != 0))
         },
         error = function(e) NULL
       )
+
+      selected <- rtn$selected
 
       if (is.null(selected)) {
         next
       }
 
+      if (i %in% 1) {
+        beta_at_q <- matrix(rtn$beta, nrow = 1)
+        names(beta_at_q) <- colnames(x)
+      } else {
+        beta_at_q <- rbind(beta_at_q, matrix(rtn$beta, nrow = 1))
+      }
       sel_count <- sel_count + selected
       total_fits <- total_fits + 1
     }
@@ -102,13 +113,12 @@ stabsel_cox_q_options <- function(
   }
 
   sel_prob <- sel_count / total_fits
-  print(sel_count)
-  print(sel_prob)
   stable_vars <- names(which(sel_prob >= cutoff))
 
   list(
     sel_prob = sel_prob,
     stable = stable_vars,
+    beta_at_q = beta_at_q,
     cutoff = cutoff,
     q = q,
     pfer_bound = pfer_bound,
