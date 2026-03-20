@@ -7,7 +7,7 @@ method_stabsel <- function(
   event_col = "event",
   cutoff = 0.75,
   PFER = 1,
-  lambda
+  nsub = 10
 ) {
   dat <- dat %<>% select(-all_of(ignore_cols))
 
@@ -28,6 +28,7 @@ method_stabsel <- function(
     y_surv,
     cutoff = cutoff,
     PFER = PFER,
+    nsub = nsub,
     verbose = FALSE
   )
 }

@@ -30,8 +30,7 @@ stabsel_glmnet_q_cap <- function(
   cutoff = 0.75,
   PFER = 1,
   q = NULL,
-  nfolds = 5,
-  verbose = TRUE,
+  verbose = FALSE,
   beta_tol = 10^-6,
   ...
 ) {
