@@ -8,6 +8,7 @@
 #' @param PFER Desired per-family error rate bound (expected number of false selections)
 #' @param q Max variables selected per subsample. If NULL, derived from PFER.
 #' @param verbose Verbose = TRUE prints some messages to the console.
+#' @param beta_tol The value under which a coefficient will be considered effectively zero, and therefore not selected.
 #' @param ... Additional arguments passed to \code{glmnet}
 stabsel_glmnet_q_cap <- function(
   x,
@@ -19,6 +20,7 @@ stabsel_glmnet_q_cap <- function(
   q = NULL,
   nfolds = 5,
   verbose = TRUE,
+  beta_tol = 10^-6,
   ...
 ) {
   n <- nrow(x)
@@ -40,7 +42,7 @@ stabsel_glmnet_q_cap <- function(
   if (verbose) {
     cli::cli_inform(c(
       "i" = "Settings: p = {p}, q = {q}, cutoff = {cutoff}",
-      "i" = "PFER bound (E[false selections] <=): {round(pfer_bound, 3)}",
+      "i" = "PFER bound (E[false selections] <=): {round(pfer_bound, 3)}"
     ))
   }
 
@@ -89,7 +91,7 @@ stabsel_glmnet_q_cap <- function(
   colnames(beta_at_q) <- colnames(x)
 
   total_fits <- nrow(beta_at_q)
-  sel_count <- colSums(beta_at_q != 0)
+  sel_count <- colSums(abs(beta_at_q) > beta_tol)
   sel_prob <- sel_count / total_fits
   stable_vars <- names(which(sel_prob >= cutoff))
 

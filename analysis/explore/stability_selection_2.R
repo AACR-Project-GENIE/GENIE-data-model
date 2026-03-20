@@ -72,11 +72,11 @@ ggsurvfit(fit) +
 x_mat <- as.matrix(easy_test[, 5:ncol(easy_test)])
 
 # Awesome - this finds them, but the coefficients are obviously a bit muted from the truth to say the least.
-coef(cv.glmnet(
+head(coef(cv.glmnet(
   x = x_mat,
   y = with(easy_test, Surv(time = x, time2 = y, event = event)),
   family = 'cox'
-))
+)))
 
 res_opt <- stabsel_glmnet_q_cap(
   x_mat,
@@ -84,7 +84,8 @@ res_opt <- stabsel_glmnet_q_cap(
   nsub = 100,
   cutoff = 0.75,
   PFER = 1,
-  lambda_method = "q_cap"
+  lambda_method = "q_cap",
+  verbose = T
 )
 mean_beta <- res_opt$beta_at_q %>% colMeans(.)
 names(mean_beta) <- colnames(x_mat)
