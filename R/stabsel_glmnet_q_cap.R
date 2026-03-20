@@ -10,6 +10,18 @@
 #' @param verbose Verbose = TRUE prints some messages to the console.
 #' @param beta_tol The value under which a coefficient will be considered effectively zero, and therefore not selected.
 #' @param ... Additional arguments passed to \code{glmnet}
+#' @return A list with:
+#' \describe{
+#'   \item{sel_prob}{Named numeric vector of selection probabilities (length = ncol(x)).}
+#'   \item{stable}{Character vector of variable names with selection probability >= cutoff.}
+#'   \item{beta_at_q}{Matrix of coefficients at the smallest lambda where q or fewer coefficients were kept (n_fits x p). Each row is one subsample fit.}
+#'   \item{beta_mean}{Numeric vector of col means of \code{beta_at_q}, i.e. the mean coefficient value of the beta values.}
+#'   \item{cutoff}{The cutoff value input to the function.}
+#'   \item{q}{The q value used (derived or supplied).}
+#'   \item{pfer_bound}{Upper bound on E(PFER) implied by q, cutoff, and ncol(x).}
+#'   \item{nsub}{Number of subsample splits (user supplied and returned).}
+#'   \item{total_fits}{Number of subsamples that converged successfully.  This counts both splits for each attempted fit 1:nsub.}
+#' }
 stabsel_glmnet_q_cap <- function(
   x,
   y,
@@ -95,7 +107,7 @@ stabsel_glmnet_q_cap <- function(
   sel_prob <- sel_count / total_fits
   stable_vars <- names(which(sel_prob >= cutoff))
   # this is not a standard part of the stability selection algorithm but I want to see how bad it is:
-  mean_beta <- rowMeans(beta_at_q)
+  mean_beta <- colMeans(beta_at_q)
 
   list(
     sel_prob = sel_prob,
