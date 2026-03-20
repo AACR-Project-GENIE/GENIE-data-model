@@ -17,6 +17,7 @@ source(here('analysis', 'script', 'run_method_univar_cox.R'))
 source(here('analysis', 'script', 'run_method_lasso_5fcv.R'))
 source(here('analysis', 'script', 'run_method_lasso_loocv.R'))
 source(here('analysis', 'script', 'run_method_lasso_cv_boot.R'))
+source(here('analysis', 'script', 'run_method_stabsel.R'))
 
 # Lasso method with 5-fold CV - just one time.
 source(here('analysis', 'script', 'eval_univar_cox.R'))
