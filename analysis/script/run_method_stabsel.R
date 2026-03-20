@@ -16,7 +16,9 @@ sim_n500 <- readr::read_rds(
 
 
 sim_n80 %<>% slice_sample(prop = 0.01)
-cli::cli_warn("sim_n80 subsetted to 1% of rows for testing - remove before full run.")
+cli::cli_warn(
+  "sim_n80 subsetted to 1% of rows for testing - remove before full run."
+)
 
 sim_n80 %<>%
   mutate(
@@ -39,7 +41,9 @@ readr::write_rds(
 
 
 sim_n500 %<>% slice_sample(prop = 0.01)
-cli::cli_warn("sim_n500 subsetted to 1% of rows for testing - remove before full run.")
+cli::cli_warn(
+  "sim_n500 subsetted to 1% of rows for testing - remove before full run."
+)
 
 sim_n500 %<>%
   mutate(
