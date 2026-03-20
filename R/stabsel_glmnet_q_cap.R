@@ -31,7 +31,7 @@ stabsel_glmnet_q_cap <- function(
   #   q = floor(sqrt(PFER * (2*cutoff - 1) * p))
   if (is.null(q)) {
     q <- floor(sqrt(PFER * (2 * cutoff - 1) * p))
-    q <- max(1, min(q, p))
+    q <- max(1, min(q, p)) # q if q < p, 1 if q < 1, p otherwise.
   }
 
   # recompute the actual PFER bound given q, cutoff, p
