@@ -23,12 +23,19 @@ method_stabsel <- function(
     event = y_dat[[event_col]]
   )
 
-  stabsel_glmnet_q_cap(
+  fit <- stabsel_glmnet_q_cap(
     x_mat,
     y_surv,
     cutoff = cutoff,
     PFER = PFER,
     nsub = nsub,
     verbose = FALSE
+  )
+
+  tibble(
+    variable = names(fit$sel_prob),
+    selected = names(fit$sel_prob) %in% fit$stable,
+    mean_coef = fit$beta_mean,
+    sel_prob = fit$sel_prob
   )
 }
