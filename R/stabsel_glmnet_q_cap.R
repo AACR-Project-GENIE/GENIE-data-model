@@ -45,9 +45,7 @@ stabsel_glmnet_q_cap <- function(
     ))
   }
 
-  sel_count <- rep(0, p)
-  names(sel_count) <- colnames(x)
-  total_fits <- 0
+  betas <- list()
 
   for (i in seq_len(nsub)) {
     perm <- sample(n)
@@ -58,7 +56,7 @@ stabsel_glmnet_q_cap <- function(
       xs <- x[half, , drop = FALSE]
       ys <- y[half, ]
 
-      rtn <- tryCatch(
+      beta_vec <- tryCatch(
         {
           # fit full path, pick lambda with <= q nonzero coefficients
           fit <- glmnet(xs, ys, family = "cox", ...)
@@ -66,33 +64,21 @@ stabsel_glmnet_q_cap <- function(
           nvar <- colSums(beta != 0)
           valid <- which(nvar <= q)
           if (length(valid) == 0) {
-            cli::cli_warn("Even the most regularized version had > q vars.")
-            # even the most regularised solution has > q vars; take it anyway
+            cli::cli_warn(
+              "Even the most regularized version had > q (q={q}) vars.  This is unexpected behavior in glmnet."
+            )
             idx <- 1
           } else {
             idx <- max(valid) # least regularised with <= q vars
           }
-          # cli_abort(
-          #   "need to figure out a way to get the betas in an organized way from the row with optimal lambda given q restriction"
-          # )
-          list(beta = beta[, idx], selected = as.numeric(beta[, idx] != 0))
+          beta[, idx]
         },
         error = function(e) NULL
       )
 
-      selected <- rtn$selected
-
-      if (is.null(selected)) {
-        next
+      if (!is.null(beta_vec)) {
+        betas <- c(betas, list(beta_vec))
       }
-
-      if (i %in% 1 & half == half1) {
-        beta_at_q <- matrix(rtn$beta, nrow = 1)
-      } else {
-        beta_at_q <- rbind(beta_at_q, matrix(rtn$beta, nrow = 1))
-      }
-      sel_count <- sel_count + selected
-      total_fits <- total_fits + 1
     }
 
     if (i %% 10 == 0 & verbose) {
@@ -100,8 +86,11 @@ stabsel_glmnet_q_cap <- function(
     }
   }
 
+  beta_at_q <- do.call(rbind, betas)
   colnames(beta_at_q) <- colnames(x)
 
+  total_fits <- nrow(beta_at_q)
+  sel_count <- colSums(beta_at_q != 0)
   sel_prob <- sel_count / total_fits
   stable_vars <- names(which(sel_prob >= cutoff))
 
