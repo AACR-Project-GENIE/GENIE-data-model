@@ -94,11 +94,14 @@ stabsel_glmnet_q_cap <- function(
   sel_count <- colSums(abs(beta_at_q) > beta_tol)
   sel_prob <- sel_count / total_fits
   stable_vars <- names(which(sel_prob >= cutoff))
+  # this is not a standard part of the stability selection algorithm but I want to see how bad it is:
+  mean_beta <- rowMeans(beta_at_q)
 
   list(
     sel_prob = sel_prob,
     stable = stable_vars,
     beta_at_q = beta_at_q,
+    beta_mean = mean_beta,
     cutoff = cutoff,
     q = q,
     pfer_bound = pfer_bound,
