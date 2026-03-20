@@ -15,6 +15,9 @@ sim_n500 <- readr::read_rds(
 )
 
 
+sim_n80 %<>% slice_sample(prop = 0.01)
+cli::cli_warn("sim_n80 subsetted to 1% of rows for testing - remove before full run.")
+
 sim_n80 %<>%
   mutate(
     analysis_method = "method_stabsel",
