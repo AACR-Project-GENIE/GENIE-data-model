@@ -42,7 +42,7 @@ easy_covar <- expand_grid(
   select(-id) # added again below.
 
 # a1 and a2 have strong effects, betas have none.
-easy_beta <- c(-0.5, 0.5, rep(0, times = n_junk_var))
+easy_beta <- c(-1, 1, rep(0, times = n_junk_var))
 names(easy_beta) <- colnames(easy_covar)
 
 easy_test <- gen_data_one(
@@ -64,7 +64,7 @@ easy_test <- gen_data_one(
 
 
 library(ggsurvfit)
-fit <- survfit(Surv(time = x, time2 = y, event = event) ~ a1, data = easy_test)
+fit <- survfit(Surv(time = x, time2 = y, event = event) ~ a2, data = easy_test)
 ggsurvfit(fit) +
   add_risktable()
 
@@ -78,7 +78,7 @@ coef(cv.glmnet(
   family = 'cox'
 ))
 
-res_opt <- stabsel_cox_q_options(
+res_opt <- stabsel_glmnet_q_cap(
   x_mat,
   with(easy_test, Surv(time = x, time2 = y, event = event)),
   nsub = 100,
@@ -87,6 +87,13 @@ res_opt <- stabsel_cox_q_options(
   lambda_method = "q_cap"
 )
 mean_beta <- res_opt$beta_at_q %>% colMeans(.)
+names(mean_beta) <- colnames(x_mat)
+
+tibble(name = names(mean_beta), value = mean_beta) %>%
+  ggplot(aes(x = value, y = reorder(name, value))) +
+  geom_col() +
+  labs(y = NULL)
+mean_beta
 
 plot_stabsel_cox(res_opt)
 

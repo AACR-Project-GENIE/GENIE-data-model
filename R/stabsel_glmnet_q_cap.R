@@ -41,7 +41,6 @@ stabsel_glmnet_q_cap <- function(
     cli::cli_inform(c(
       "i" = "Settings: p = {p}, q = {q}, cutoff = {cutoff}",
       "i" = "PFER bound (E[false selections] <=): {round(pfer_bound, 3)}",
-      "i" = "Lambda method: {lambda_method}"
     ))
   }
 
