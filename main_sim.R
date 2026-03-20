@@ -25,6 +25,7 @@ source(here('analysis', 'script', 'eval_univar_cox_fdr_corrected.R'))
 source(here('analysis', 'script', 'eval_lasso_5fcv.R'))
 source(here('analysis', 'script', 'eval_lasso_loocv.R'))
 source(here('analysis', 'script', 'eval_lasso_cv_boot.R'))
+source(here('analysis', 'script', 'eval_stabsel.R'))
 
 # Combine all the simluation evaluations for display
 source(here('analysis', 'script', 'combine_sim_evals.R'))
