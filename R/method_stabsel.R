@@ -5,9 +5,9 @@ method_stabsel <- function(
   x_col = "x",
   y_col = "y",
   event_col = "event",
-  cutoff = 0.75,
+  cutoff = 0.5,
   PFER = 1,
-  nsub = 10
+  nsub = 50
 ) {
   dat <- dat %<>% select(-all_of(ignore_cols))
 
