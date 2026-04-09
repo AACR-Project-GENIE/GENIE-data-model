@@ -35,7 +35,7 @@ map_naaccr_race <- function(x) {
     "30" = "Melanesian NOS",
     "31" = "Fiji Islander",
     "32" = "New Guinean",
-    "96" = "Other Asian including Asian NOS and Oriental NOS",
+    "96" = "Other Asian",
     "97" = "Pacific Islander NOS",
     "98" = "Other",
     "99" = "Unknown"
