@@ -70,6 +70,9 @@ utils::globalVariables(
     "stage_dx",
     "ca_age",
     "naaccr_diagnosis_age",
-    "age_dx"
+    "age_dx",
+    "ca_site",
+    "naaccr_site_cd",
+    "ca_d_site"
   )
 )

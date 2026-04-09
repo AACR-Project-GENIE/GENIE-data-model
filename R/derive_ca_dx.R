@@ -51,6 +51,7 @@ derive_ca_dx <- function(
   rtn <- rtn %>%
     dplyr::relocate(ca_seq, .after = record_id)
 
+  rtn <- derive_ca_d_site(rtn)
   rtn <- derive_stage_dx(rtn)
   rtn <- derive_age_dx(rtn)
 
