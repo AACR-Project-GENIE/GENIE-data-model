@@ -22,8 +22,8 @@ NULL
 #' @keywords internal
 #' @export
 #' @importFrom rlang :=
-#' @usage assignee := assignment
-#' @param assignee Name of the new variable.
-#' @param assignment An expression of what value to assign to the new variable.
+#' @usage x := y
+#' @param x Name of the new variable.
+#' @param y An expression of what value to assign to the new variable.
 #' @return Similar to a = b except it works in special cases.
 NULL

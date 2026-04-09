@@ -56,6 +56,7 @@ utils::globalVariables(
     "naaccr_race_code_secondary",
     "naaccr_race_code_tertiary",
     "naaccr_sex_code",
-    "hybrid_death_source"
+    "hybrid_death_source",
+    "institution"
   )
 )
