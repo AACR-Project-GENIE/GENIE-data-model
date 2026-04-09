@@ -4,6 +4,9 @@
 #'
 #' @returns A character vector of ethnicity labels.
 #' @export
+#'
+#' @examples
+#' map_naaccr_eth_code(c(0, 1, 8, 9))
 map_naaccr_eth_code <- function(x) {
   eth_labels <- c(
     "0" = "Non-Spanish; non-Hispanic",
