@@ -4,12 +4,12 @@
 \alias{:=}
 \title{Injection operator}
 \usage{
-assignee := assignment
+x := y
 }
 \arguments{
-\item{assignee}{Name of the new variable.}
+\item{x}{Name of the new variable.}
 
-\item{assignment}{An expression of what value to assign to the new variable.}
+\item{y}{An expression of what value to assign to the new variable.}
 }
 \value{
 Similar to a = b except it works in special cases.

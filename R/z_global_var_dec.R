@@ -60,3 +60,13 @@ utils::globalVariables(
     "institution"
   )
 )
+
+utils::globalVariables(
+  names = c(
+    "best_ajcc_stage_cd",
+    "ca_stage_iv",
+    "ca_stage",
+    "stage_dx_iv",
+    "stage_dx"
+  )
+)
