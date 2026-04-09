@@ -51,5 +51,7 @@ derive_ca_dx <- function(
   rtn <- rtn %>%
     dplyr::relocate(ca_seq, .after = record_id)
 
+  rtn <- derive_stage_dx(rtn)
+
   return(rtn)
 }
