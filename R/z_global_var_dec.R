@@ -54,6 +54,7 @@ utils::globalVariables(
     "naaccr_ethnicity_code",
     "naaccr_race_code_primary",
     "naaccr_race_code_secondary",
-    "naaccr_race_code_tertiary"
+    "naaccr_race_code_tertiary",
+    "naaccr_sex_code"
   )
 )

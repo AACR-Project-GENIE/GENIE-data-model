@@ -23,7 +23,8 @@ derive_pt <- function(
       naaccr_ethnicity_code = map_naaccr_eth_code(naaccr_ethnicity_code),
       naaccr_race_code_primary = map_naaccr_race(naaccr_race_code_primary),
       naaccr_race_code_secondary = map_naaccr_race(naaccr_race_code_secondary),
-      naaccr_race_code_tertiary = map_naaccr_race(naaccr_race_code_tertiary)
+      naaccr_race_code_tertiary = map_naaccr_race(naaccr_race_code_tertiary),
+      naaccr_sex_code = map_naaccr_sex_code(naaccr_sex_code)
     )
 
   return(rtn)
