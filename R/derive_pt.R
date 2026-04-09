@@ -18,6 +18,14 @@ derive_pt <- function(
     dict = dat_dict_sub
   )
 
+  # add institution:
+  rtn <- rtn |>
+    mutate(
+      institution = stringr::word(record_id, 2, sep = '-')
+    ) |>
+    relocate(institution, .after = record_id)
+
+  # map all the dropdowns that aren't in the data dictionary:
   rtn <- rtn |>
     dplyr::mutate(
       naaccr_ethnicity_code = map_naaccr_eth_code(naaccr_ethnicity_code),
