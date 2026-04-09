@@ -48,3 +48,12 @@ utils::globalVariables(
     'valid_val_value_meaning'
   )
 )
+
+utils::globalVariables(
+  names = c(
+    "naaccr_ethnicity_code",
+    "naaccr_race_code_primary",
+    "naaccr_race_code_secondary",
+    "naaccr_race_code_tertiary"
+  )
+)

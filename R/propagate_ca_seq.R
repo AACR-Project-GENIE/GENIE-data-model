@@ -7,11 +7,11 @@
 #'
 #' @examples
 propagate_ca_seq <- function(lst) {
-  ca_seq_lookup <- bind_rows(
+  ca_seq_lookup <- dplyr::bind_rows(
     lst[["ca_ind"]],
     lst[["ca_non_ind"]]
   ) |>
-    select(record_id, redcap_ca_seq, ca_seq)
+    dplyr::select(record_id, redcap_ca_seq, ca_seq)
 
   ca_tables <- c("ca_ind", "ca_non_ind")
   purrr::imap(lst, \(tab, nm) {
@@ -29,6 +29,6 @@ propagate_ca_seq <- function(lst) {
     }
     tab |>
       dplyr::left_join(ca_seq_lookup, by = c("record_id", "redcap_ca_seq")) |>
-      relocate(ca_seq, .after = record_id)
+      dplyr::relocate(ca_seq, .after = record_id)
   })
 }
