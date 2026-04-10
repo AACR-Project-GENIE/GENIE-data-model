@@ -346,5 +346,8 @@ map_ca_d_site <- function(x) {
     "903" = "F40 Urine"
   )
 
+  d_site_labels <- stringr::word(d_site_labels, 1)
+  names(d_site_labels) <- names(d_site_labels) # preserve names after word()
+
   dplyr::recode(as.character(x), !!!d_site_labels)
 }

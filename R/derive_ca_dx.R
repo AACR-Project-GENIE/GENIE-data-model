@@ -62,7 +62,7 @@ derive_ca_dx <- function(
     dplyr::mutate(
       ca_dx_how = map_ca_dx_how(ca_dx_how),
       ca_type = map_ca_type(ca_type),
-      ca_d_site = map_ca_d_site(ca_d_site)
+      ca_d_site = map_ca_d_site(ca_site)
     )
 
   rtn <- add_mos_yrs_intervals(rtn) # anything ending in days.
