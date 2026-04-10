@@ -21,13 +21,20 @@
 derive_reg_end_any_int <- function(dat) {
   dat |>
     dplyr::mutate(
-      dob_reg_end_any_int = pmin(
-        drugs_enddt_int_1,
-        drugs_enddt_int_2,
-        drugs_enddt_int_3,
-        drugs_enddt_int_4,
-        drugs_enddt_int_5,
-        na.rm = TRUE
-      )
+      dob_reg_end_any_int = {
+        x <- suppressWarnings(pmin(
+          drugs_enddt_int_1,
+          drugs_enddt_int_2,
+          drugs_enddt_int_3,
+          drugs_enddt_int_4,
+          drugs_enddt_int_5,
+          na.rm = TRUE
+        ))
+        # When all five drugs_enddt_int_<n> slots are NA (e.g. a regimen
+        # that was not discontinued, so every slot was masked upstream),
+        # pmin(..., na.rm = TRUE) returns Inf with a warning. Coerce those
+        # back to NA so the column stays numeric, avoiding Inf values.
+        dplyr::if_else(is.finite(x), x, NA_real_)
+      }
     )
 }
