@@ -2,6 +2,7 @@
 
 export("%>%")
 export(":=")
+export(add_institution)
 export(add_mos_yrs_intervals)
 export(add_undefined_vars)
 export(align_data_dictionary)
