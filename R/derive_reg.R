@@ -109,6 +109,8 @@ derive_reg <- function(
 
   rtn <- derive_reg_start_int(rtn)
 
+  rtn <- derive_reg_end_any_int(rtn)
+
   # Notes:
   # probably need remove _mask columns too - but not yet.
   return(rtn)
