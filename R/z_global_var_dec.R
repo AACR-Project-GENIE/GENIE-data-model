@@ -73,6 +73,7 @@ utils::globalVariables(
     "age_dx",
     "ca_d_site",
     "ca_dx_how",
-    "ca_type"
+    "ca_type",
+    "ca_clin_t_stage"
   )
 )
