@@ -84,6 +84,16 @@ utils::globalVariables(
     "drugs_startdt_int_1",
     "regimen_number",
     ".affected_cancer",
-    "drugs_dc_ynu"
+    "drugs_dc_ynu",
+    "drugs_enddt_int_1",
+    "drugs_enddt_int_2",
+    "drugs_enddt_int_3",
+    "drugs_enddt_int_4",
+    "drugs_enddt_int_5",
+    "drugs_lastdt_int_1",
+    "drugs_lastdt_int_2",
+    "drugs_lastdt_int_3",
+    "drugs_lastdt_int_4",
+    "drugs_lastdt_int_5"
   )
 )
