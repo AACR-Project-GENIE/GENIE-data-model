@@ -18,13 +18,21 @@ derive_reg <- function(
     dict = dat_dict_sub
   )
 
-  rtn %<>% drugs_ca_rearrangement(., prefix = '^drugs_ca')
+  rtn <- drugs_ca_rearrangement(rtn, prefix = '^drugs_ca')
 
-  rtn %<>%
-    mutate(
-      across(
-        .cols = matches('^drugs_(start|end|last)dt_int_'),
+  rtn <- rtn |>
+    dplyr::mutate(
+      dplyr::across(
+        .cols = dplyr::matches('^drugs_(start|end|last)dt_int_'),
         .fns = as.numeric
+      )
+    )
+
+  rtn <- rtn |>
+    dplyr::mutate(
+      dplyr::across(
+        .cols = dplyr::matches('^drugs_drug_\\d+$'),
+        .fns = map_drug_name
       )
     )
 
