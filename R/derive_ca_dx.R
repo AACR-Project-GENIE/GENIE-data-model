@@ -2,6 +2,8 @@
 #'
 #' @param tab Cancer diagnosis form from the raw redcap.
 #' @param dat_dict_sub The subset of the data dictionary with variables for this instrument.
+#' @param cast_to_double Character vector of column names to coerce to
+#'   `double` at the end of the function. Defaults to `"tr_eligible"`.
 #'
 #' @returns A dataframe similar to ca_dx with additional derivations.
 #' @export
@@ -9,7 +11,8 @@
 #' @examples # Going to need synthetic data probably...
 derive_ca_dx <- function(
   tab,
-  dat_dict_sub
+  dat_dict_sub,
+  cast_to_double = c("tr_eligible")
 ) {
   raw_ca_dx <- column_exclusion_helper_derived(tab)
 
@@ -57,6 +60,11 @@ derive_ca_dx <- function(
   rtn <- derive_age_dx(rtn)
 
   rtn <- add_mos_yrs_intervals(rtn) # anything ending in days.
+
+  if (length(cast_to_double) > 0) {
+    rtn <- rtn |>
+      dplyr::mutate(dplyr::across(dplyr::all_of(cast_to_double), as.double))
+  }
 
   return(rtn)
 }
