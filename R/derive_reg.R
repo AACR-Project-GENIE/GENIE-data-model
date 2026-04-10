@@ -41,6 +41,23 @@ derive_reg <- function(
       drugs_dc_ynu = map_drugs_dc_ynu(drugs_dc_ynu)
     )
 
+  rtn <- rtn |>
+    dplyr::mutate(
+      dplyr::across(
+        .cols = dplyr::matches("^drugs_enddt_int_\\d+$"),
+        .fns = \(x) derive_drug_end_or_lastadm_int(
+          drugs_enddt_int = x,
+          drugs_lastdt_int = .data[[stringr::str_replace(
+            dplyr::cur_column(),
+            "^drugs_enddt_int_",
+            "drugs_lastdt_int_"
+          )]],
+          drugs_dc_ynu = drugs_dc_ynu
+        ),
+        .names = "{stringr::str_replace(.col, '^drugs_enddt_int_', 'drugs_drug_end_or_lastadm_int_')}"
+      )
+    )
+
   rtn <- derive_regimen_number(rtn)
 
   rtn <- derive_regimen_drugs(rtn)

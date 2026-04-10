@@ -7,24 +7,23 @@
 derive_dx_drug_int(lst)
 }
 \arguments{
-\item{lst}{A list of PRISSMM tables. Must contain \code{ca_ind}, \code{ca_non_ind},
-and \code{reg}. The cancer index tables must have \code{record_id},
-\code{redcap_ca_seq}, and \code{dob_ca_dx_days}. \code{reg} must have \code{record_id},
-\code{redcap_ca_seq}, and the wide \verb{drugs_startdt_int_<n>} /
-\verb{drugs_enddt_int_<n>} columns.}
+\item{lst}{A list of PRISSMM tables. Must contain \code{ca_ind}, \code{ca_non_ind}, and
+\code{reg}. The cancer index tables must have \code{record_id}, \code{redcap_ca_seq}, and
+\code{dob_ca_dx_days}. \code{reg} must have \code{record_id}, \code{redcap_ca_seq}, and the
+wide \verb{drugs_startdt_int_<n>} / \verb{drugs_enddt_int_<n>} columns.}
 }
 \value{
-\code{lst} with the new \verb{dx_drug_start_int_<n>} and
-\verb{dx_drug_end_int_<n>} columns added to \code{lst$reg}.
+\code{lst} with the new \verb{dx_drug_start_int_<n>} and \verb{dx_drug_end_int_<n>}
+columns added to \code{lst$reg}.
 }
 \description{
-Adds \verb{dx_drug_start_int_<n>} and \verb{dx_drug_end_int_<n>} columns to the
-regimen (\code{reg}) table in \code{lst}, representing the number of days from the
-cancer diagnosis (for the cancer in that row, identified by
-\code{redcap_ca_seq}) to the start and end of each drug in the regimen.
-Computed as \verb{drugs_startdt_int_<n> - dob_ca_dx_days} and
-\verb{drugs_enddt_int_<n> - dob_ca_dx_days}. The month versions (\verb{_mos}) are
-intentionally not produced here.
+Adds \verb{dx_drug_start_int_<n>} and \verb{dx_drug_end_int_<n>} columns to the regimen
+(\code{reg}) table in \code{lst}, representing the number of days from the cancer
+diagnosis (for the cancer in that row, identified by \code{redcap_ca_seq}) to the
+start and end of each drug in the regimen. Computed as `drugs_startdt_int_\if{html}{\out{<n>}}
+\itemize{
+\item dob_ca_dx_days\code{and}drugs_enddt_int_\if{html}{\out{<n>}} - dob_ca_dx_days\verb{. The month versions (}_mos`) are intentionally not produced here.
+}
 }
 \examples{
 # derive_dx_drug_int(lst)
