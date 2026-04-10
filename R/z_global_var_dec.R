@@ -106,6 +106,7 @@ utils::globalVariables(
     "drugs_drug_5",
     "dob_reg_start_int",
     "dob_reg_end_any_int",
-    "dob_reg_end_all_int"
+    "dob_reg_end_all_int",
+    "drugs_num"
   )
 )
