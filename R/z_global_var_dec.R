@@ -83,6 +83,7 @@ utils::globalVariables(
     "ca_clin_t4_det",
     "drugs_startdt_int_1",
     "regimen_number",
-    ".affected_cancer"
+    ".affected_cancer",
+    "drugs_dc_ynu"
   )
 )

@@ -36,6 +36,11 @@ derive_reg <- function(
       )
     )
 
+  rtn <- rtn |>
+    dplyr::mutate(
+      drugs_dc_ynu = map_drugs_dc_ynu(drugs_dc_ynu)
+    )
+
   rtn <- derive_regimen_number(rtn)
 
   rtn <- derive_regimen_drugs(rtn)
