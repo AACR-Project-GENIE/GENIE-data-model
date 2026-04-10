@@ -59,6 +59,11 @@ derive_ca_dx <- function(
   rtn <- derive_stage_dx(rtn)
   rtn <- derive_age_dx(rtn)
 
+  rtn <- rtn |>
+    dplyr::mutate(
+      ca_dx_how = map_ca_dx_how(ca_dx_how)
+    )
+
   rtn <- add_mos_yrs_intervals(rtn) # anything ending in days.
 
   if (length(cast_to_double) > 0) {

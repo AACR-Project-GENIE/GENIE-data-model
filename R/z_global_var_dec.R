@@ -73,6 +73,7 @@ utils::globalVariables(
     "age_dx",
     "ca_site",
     "naaccr_site_cd",
-    "ca_d_site"
+    "ca_d_site",
+    "ca_dx_how"
   )
 )
