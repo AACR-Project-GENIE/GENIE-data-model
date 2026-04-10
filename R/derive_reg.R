@@ -70,6 +70,39 @@ derive_reg <- function(
       )
     )
 
+  # Match legacy: drugs_enddt_int_N is only populated when the regimen was
+  # discontinued (drugs_dc_ynu == "Yes") and the corresponding drug slot is
+  # not an investigational drug. This cascades to dx_drug_end_int_N via the
+  # subtraction in derive_dx_drug_int().
+  rtn <- rtn |>
+    dplyr::mutate(
+      drugs_enddt_int_1 = dplyr::case_when(
+        drugs_dc_ynu %in% "Yes" &
+          !(drugs_drug_1 %in% "Investigational Drug") ~ drugs_enddt_int_1,
+        .default = NA_real_
+      ),
+      drugs_enddt_int_2 = dplyr::case_when(
+        drugs_dc_ynu %in% "Yes" &
+          !(drugs_drug_2 %in% "Investigational Drug") ~ drugs_enddt_int_2,
+        .default = NA_real_
+      ),
+      drugs_enddt_int_3 = dplyr::case_when(
+        drugs_dc_ynu %in% "Yes" &
+          !(drugs_drug_3 %in% "Investigational Drug") ~ drugs_enddt_int_3,
+        .default = NA_real_
+      ),
+      drugs_enddt_int_4 = dplyr::case_when(
+        drugs_dc_ynu %in% "Yes" &
+          !(drugs_drug_4 %in% "Investigational Drug") ~ drugs_enddt_int_4,
+        .default = NA_real_
+      ),
+      drugs_enddt_int_5 = dplyr::case_when(
+        drugs_dc_ynu %in% "Yes" &
+          !(drugs_drug_5 %in% "Investigational Drug") ~ drugs_enddt_int_5,
+        .default = NA_real_
+      )
+    )
+
   rtn <- derive_regimen_number(rtn)
 
   rtn <- derive_regimen_drugs(rtn)

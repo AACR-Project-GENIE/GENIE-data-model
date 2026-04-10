@@ -94,6 +94,11 @@ utils::globalVariables(
     "drugs_lastdt_int_2",
     "drugs_lastdt_int_3",
     "drugs_lastdt_int_4",
-    "drugs_lastdt_int_5"
+    "drugs_lastdt_int_5",
+    "drugs_drug_1",
+    "drugs_drug_2",
+    "drugs_drug_3",
+    "drugs_drug_4",
+    "drugs_drug_5"
   )
 )
