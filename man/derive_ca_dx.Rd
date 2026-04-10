@@ -4,12 +4,15 @@
 \alias{derive_ca_dx}
 \title{Derive cancer diagnosis form}
 \usage{
-derive_ca_dx(tab, dat_dict_sub)
+derive_ca_dx(tab, dat_dict_sub, cast_to_double = c("tr_eligible"))
 }
 \arguments{
 \item{tab}{Cancer diagnosis form from the raw redcap.}
 
 \item{dat_dict_sub}{The subset of the data dictionary with variables for this instrument.}
+
+\item{cast_to_double}{Character vector of column names to coerce to
+\code{double} at the end of the function. Defaults to \code{"tr_eligible"}.}
 }
 \value{
 A dataframe similar to ca_dx with additional derivations.

@@ -12,7 +12,7 @@
 derive_ca_dx <- function(
   tab,
   dat_dict_sub,
-  cast_to_double = c("tr_eligible")
+  cast_to_double = c("tr_eligible", 'age_dx')
 ) {
   raw_ca_dx <- column_exclusion_helper_derived(tab)
 
