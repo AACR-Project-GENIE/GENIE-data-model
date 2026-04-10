@@ -33,28 +33,22 @@ derive_stage_dx <- function(dat) {
         ca_stage_iv == "Yes" ~ "Stage IV",
         ca_stage_iv == "No" ~ "Stage I-III"
       ),
-      stage_dx = factor(
-        dplyr::case_when(
-          substr(best_ajcc_stage_cd, 1, 1) == "0" ~ "Stage 0",
-          substr(best_ajcc_stage_cd, 1, 1) == "1" |
-            stringr::str_to_upper(best_ajcc_stage_cd) %in%
-              c("I", "IA") ~ "Stage I",
-          substr(best_ajcc_stage_cd, 1, 1) == "2" ~ "Stage II",
-          substr(best_ajcc_stage_cd, 1, 1) == "3" ~ "Stage III",
-          substr(stringr::str_to_upper(best_ajcc_stage_cd), 1, 3) ==
-            "III" ~ "Stage III",
-          substr(best_ajcc_stage_cd, 1, 1) == "4" ~ "Stage IV",
-          ca_stage_iv == "Yes" ~ "Stage IV",
-          stringr::str_to_upper(ca_stage) %in%
-            c("0", "0A", "0IS") ~ "Stage 0",
-          ca_stage %in% c("I", "IA", "IB") ~ "Stage I",
-          ca_stage %in% c("II", "IIA", "IIB", "IIC") ~ "Stage II",
-          ca_stage %in% c("III", "IIIA", "IIIB", "IIIC") ~ "Stage III"
-        ),
-        levels = c(
-          "Stage 0", "Stage I", "Stage II",
-          "Stage III", "Stage I-III NOS", "Stage IV"
-        )
+      stage_dx = dplyr::case_when(
+        substr(best_ajcc_stage_cd, 1, 1) == "0" ~ "Stage 0",
+        substr(best_ajcc_stage_cd, 1, 1) == "1" |
+          stringr::str_to_upper(best_ajcc_stage_cd) %in%
+            c("I", "IA") ~ "Stage I",
+        substr(best_ajcc_stage_cd, 1, 1) == "2" ~ "Stage II",
+        substr(best_ajcc_stage_cd, 1, 1) == "3" ~ "Stage III",
+        substr(stringr::str_to_upper(best_ajcc_stage_cd), 1, 3) ==
+          "III" ~ "Stage III",
+        substr(best_ajcc_stage_cd, 1, 1) == "4" ~ "Stage IV",
+        ca_stage_iv == "Yes" ~ "Stage IV",
+        stringr::str_to_upper(ca_stage) %in%
+          c("0", "0A", "0IS") ~ "Stage 0",
+        ca_stage %in% c("I", "IA", "IB") ~ "Stage I",
+        ca_stage %in% c("II", "IIA", "IIB", "IIC") ~ "Stage II",
+        ca_stage %in% c("III", "IIIA", "IIIB", "IIIC") ~ "Stage III"
       )
     )
 }

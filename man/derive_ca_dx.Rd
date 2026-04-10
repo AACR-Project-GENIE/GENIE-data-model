@@ -4,7 +4,7 @@
 \alias{derive_ca_dx}
 \title{Derive cancer diagnosis form}
 \usage{
-derive_ca_dx(tab, dat_dict_sub, cast_to_double = c("tr_eligible"))
+derive_ca_dx(tab, dat_dict_sub, cast_to_double = c("tr_eligible", "age_dx"))
 }
 \arguments{
 \item{tab}{Cancer diagnosis form from the raw redcap.}
