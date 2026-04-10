@@ -4,10 +4,15 @@
 \alias{map_drug_name}
 \title{Map drug codes to drug names}
 \usage{
-map_drug_name(x)
+map_drug_name(x, investigational_num = 49135)
 }
 \arguments{
 \item{x}{A numeric (or character) vector of drug codes.}
+
+\item{investigational_num}{A drug code that is missing from the package
+drug-name mapping and should be added as \code{"Investigational Drug"} before
+recoding. Defaults to \code{49135}. Pass \code{NULL} to skip adding anything (the
+zero-length index assignment is a no-op).}
 }
 \value{
 A character vector of drug names.

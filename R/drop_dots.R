@@ -1,5 +1,5 @@
 drop_dots <- function(x) {
-  x %>% select(-tidyselect::starts_with("."))
+  x %>% dplyr::select(-tidyselect::starts_with("."))
 }
 
 # test <- tibble(
