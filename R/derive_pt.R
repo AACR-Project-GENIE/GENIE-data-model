@@ -18,12 +18,7 @@ derive_pt <- function(
     dict = dat_dict_sub
   )
 
-  # add institution:
-  rtn <- rtn |>
-    dplyr::mutate(
-      institution = stringr::word(record_id, 2, sep = '-')
-    ) |>
-    dplyr::relocate(institution, .after = record_id)
+  rtn <- add_institution(rtn)
 
   # map all the dropdowns that aren't in the data dictionary:
   rtn <- rtn |>

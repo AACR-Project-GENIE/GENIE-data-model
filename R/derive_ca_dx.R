@@ -51,9 +51,12 @@ derive_ca_dx <- function(
   rtn <- rtn %>%
     dplyr::relocate(ca_seq, .after = record_id)
 
+  rtn <- add_institution(rtn)
   rtn <- derive_ca_d_site(rtn)
   rtn <- derive_stage_dx(rtn)
   rtn <- derive_age_dx(rtn)
+
+  rtn <- add_mos_yrs_intervals(rtn) # anything ending in days.
 
   return(rtn)
 }
