@@ -28,20 +28,20 @@ drugs_ca_rearrangement <- function(
   ]
 
   if (length(rel_cols) %in% 0) {
-    cli_abort("No drugs_ca columns in this dataset - fix!")
+    cli::cli_abort("No drugs_ca columns in this dataset - fix!")
   }
 
   rtn <- dat %>%
-    pivot_longer(
-      cols = all_of(rel_cols),
+    tidyr::pivot_longer(
+      cols = dplyr::all_of(rel_cols),
       names_to = 'redcap_ca_seq',
       values_to = '.affected_cancer'
     ) %>%
-    mutate(redcap_ca_seq = readr::parse_number(redcap_ca_seq)) %>%
-    filter(.affected_cancer %in% 1) %>%
+    dplyr::mutate(redcap_ca_seq = readr::parse_number(redcap_ca_seq)) %>%
+    dplyr::filter(.affected_cancer %in% 1) %>%
     drop_dots(.)
 
-  rtn %<>%
+  rtn <- rtn %>%
     dplyr::relocate(
       redcap_ca_seq,
       .after = redcap_repeat_instance
