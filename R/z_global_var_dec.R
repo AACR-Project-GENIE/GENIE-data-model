@@ -12,6 +12,7 @@ utils::globalVariables("ca_seq")
 utils::globalVariables("dob_ca_dx_days")
 utils::globalVariables("record_id")
 utils::globalVariables("redcap_repeat_instrument")
+utils::globalVariables("redcap_repeat_instance")
 utils::globalVariables("redcap_ca_index")
 utils::globalVariables("redcap_ca_seq")
 utils::globalVariables(".")
@@ -71,6 +72,7 @@ utils::globalVariables(
     "ca_age",
     "naaccr_diagnosis_age",
     "age_dx",
+    "ca_site",
     "ca_d_site",
     "ca_dx_how",
     "ca_type",
