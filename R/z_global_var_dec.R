@@ -77,6 +77,7 @@ utils::globalVariables(
     "ca_clin_t_stage",
     "ca_clin_t1_det",
     "ca_clin_t2_det",
-    "ca_clin_t3_det"
+    "ca_clin_t3_det",
+    "ca_clin_t4_det"
   )
 )
