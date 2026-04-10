@@ -28,6 +28,8 @@ derive_reg <- function(
       )
     )
 
+  rtn <- derive_regimen_number(rtn)
+
   # Notes:
   # probably need remove _mask columns too - but not yet.
   return(rtn)

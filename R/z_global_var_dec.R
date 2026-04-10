@@ -78,6 +78,8 @@ utils::globalVariables(
     "ca_clin_t1_det",
     "ca_clin_t2_det",
     "ca_clin_t3_det",
-    "ca_clin_t4_det"
+    "ca_clin_t4_det",
+    "drugs_startdt_int_1",
+    "regimen_number"
   )
 )
