@@ -47,7 +47,8 @@ derive_dx_drug_int <- function(lst) {
         .cols = dplyr::matches("^drugs_drug_end_or_lastadm_int_\\d+$"),
         .fns = \(x) x - dob_ca_dx_days,
         .names = "{stringr::str_replace(.col, '^drugs_drug_end_or_lastadm_int_', 'dx_drug_end_or_lastadm_int_')}"
-      )
+      ),
+      dx_reg_start_int = dob_reg_start_int - dob_ca_dx_days
     ) |>
     dplyr::select(-dob_ca_dx_days)
 
