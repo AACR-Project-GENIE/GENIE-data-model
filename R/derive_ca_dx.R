@@ -63,7 +63,8 @@ derive_ca_dx <- function(
       ca_dx_how = map_ca_dx_how(ca_dx_how),
       ca_type = map_ca_type(ca_type),
       ca_d_site = map_ca_d_site(ca_site),
-      ca_clin_t_stage = map_ca_clin_t_stage(ca_clin_t_stage)
+      ca_clin_t_stage = map_ca_clin_t_stage(ca_clin_t_stage),
+      ca_clin_t1_det = map_ca_clin_t1_det(ca_clin_t1_det)
     )
 
   rtn <- add_mos_yrs_intervals(rtn) # anything ending in days.
