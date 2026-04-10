@@ -74,6 +74,7 @@ utils::globalVariables(
     "ca_site",
     "naaccr_site_cd",
     "ca_d_site",
-    "ca_dx_how"
+    "ca_dx_how",
+    "ca_type"
   )
 )
