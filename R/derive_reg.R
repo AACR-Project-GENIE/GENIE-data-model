@@ -51,6 +51,11 @@ derive_reg <- function(
       drugs_inst = map_drugs_inst(drugs_inst)
     )
 
+  rtn <- rtn |>
+    dplyr::mutate(
+      drugs_firstinst = map_drugs_firstinst(drugs_firstinst)
+    )
+
   # Match legacy: drugs_enddt_int_N is only populated when the regimen was
   # discontinued (drugs_dc_ynu == "Yes") and the corresponding drug slot is
   # not an investigational drug. This cascades to dx_drug_end_int_N via the
