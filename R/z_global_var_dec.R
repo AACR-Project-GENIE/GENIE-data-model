@@ -109,6 +109,7 @@ utils::globalVariables(
     "dob_reg_end_all_int",
     "drugs_num",
     "drugs_inst",
-    "drugs_firstinst"
+    "drugs_firstinst",
+    "ca_clin_n_stage"
   )
 )
