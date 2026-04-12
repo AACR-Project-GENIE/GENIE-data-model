@@ -110,6 +110,7 @@ utils::globalVariables(
     "drugs_num",
     "drugs_inst",
     "drugs_firstinst",
-    "ca_clin_n_stage"
+    "ca_clin_n_stage",
+    "ca_path_group_stage"
   )
 )
