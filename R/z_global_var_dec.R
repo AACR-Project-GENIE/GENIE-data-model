@@ -116,6 +116,7 @@ utils::globalVariables(
     "ca_path_t1_det",
     "ca_path_t2_det",
     "ca_path_t3_det",
-    "ca_path_t4_det"
+    "ca_path_t4_det",
+    "ca_path_n_stage"
   )
 )
