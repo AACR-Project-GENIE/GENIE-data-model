@@ -112,6 +112,10 @@ utils::globalVariables(
     "drugs_firstinst",
     "ca_clin_n_stage",
     "ca_path_group_stage",
-    "ca_path_t_stage"
+    "ca_path_t_stage",
+    "ca_path_t1_det",
+    "ca_path_t2_det",
+    "ca_path_t3_det",
+    "ca_path_t4_det"
   )
 )
