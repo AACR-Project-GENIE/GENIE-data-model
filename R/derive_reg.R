@@ -120,6 +120,8 @@ derive_reg <- function(
 
   rtn <- derive_regimen_number(rtn)
 
+  rtn <- derive_regimen_number_within_cancer(rtn)
+
   rtn <- derive_regimen_drugs(rtn)
 
   rtn <- derive_reg_start_int(rtn)
