@@ -25,6 +25,12 @@ build_dv_tab_cpt <- function(
     exclude_cols = cpt_ca_cols
   )
 
+  rtn <- add_institution(rtn)
+
+  rtn <- derive_dob_cpt_report_days(rtn)
+
+  rtn <- derive_cpt_number(rtn)
+
   rtn <- drugs_ca_rearrangement(rtn, prefix = "^cpt_ca")
 
   return(rtn)

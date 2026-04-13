@@ -118,6 +118,10 @@ utils::globalVariables(
     "ca_path_t3_det",
     "ca_path_t4_det",
     "ca_path_n_stage",
-    "ca_tx_pre_path_stage"
+    "ca_tx_pre_path_stage",
+    "age_at_seq_report",
+    "cpt_report_int",
+    "dob_cpt_report_days",
+    "cpt_number"
   )
 )
