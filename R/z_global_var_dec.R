@@ -124,6 +124,7 @@ utils::globalVariables(
     "dob_cpt_report_days",
     "cpt_number",
     "dx_cpt_rep_days",
-    "ca_clin_group_stage"
+    "ca_clin_group_stage",
+    "ca_dmets_yn"
   )
 )
