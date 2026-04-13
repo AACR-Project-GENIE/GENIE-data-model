@@ -1,4 +1,4 @@
-#' Derive cancer-directed regimen form
+#' Build derived variable table for cancer-directed regimen form
 #'
 #' @param tab Cancer-directed drugs (regimen) form from the raw redcap.
 #' @param dat_dict_sub The subset of the data dictionary with variables for this instrument.
@@ -7,7 +7,7 @@
 #' @export
 #'
 #' @examples # Going to need synthetic data probably...
-derive_reg <- function(
+build_dv_tab_reg <- function(
   tab,
   dat_dict_sub
 ) {

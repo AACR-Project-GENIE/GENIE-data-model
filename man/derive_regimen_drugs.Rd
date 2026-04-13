@@ -8,7 +8,7 @@ derive_regimen_drugs(dat)
 }
 \arguments{
 \item{dat}{A regimen-level data frame containing the wide \verb{drugs_drug_<n>}
-drug-name columns. Typically the output of earlier \code{derive_reg()} steps,
+drug-name columns. Typically the output of earlier \code{build_dv_tab_reg()} steps,
 after \code{map_drug_name()} has replaced drug codes with names.}
 }
 \value{

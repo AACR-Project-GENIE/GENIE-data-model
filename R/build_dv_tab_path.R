@@ -1,15 +1,15 @@
-#' Derive tumor marker form
+#' Build derived variable table for pathology form
 #'
-#' @param tab Tumor marker form from the raw redcap.
+#' @param tab Pathology form from the raw redcap.
 #' @param dat_dict_sub The subset of the data dictionary with variables for
 #'   this instrument.
 #'
-#' @returns A dataframe similar to tum with additional derivations.
+#' @returns A dataframe similar to path with additional derivations.
 #' @export
 #'
 #' @examples
-#' # derive_tum(tum, dat_dict_sub)
-derive_tum <- function(
+#' # build_dv_tab_path(path, dat_dict_sub)
+build_dv_tab_path <- function(
   tab,
   dat_dict_sub
 ) {

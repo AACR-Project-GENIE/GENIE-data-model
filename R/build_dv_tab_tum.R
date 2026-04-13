@@ -1,15 +1,15 @@
-#' Derive radiation therapy form
+#' Build derived variable table for tumor marker form
 #'
-#' @param tab Radiation therapy form from the raw redcap.
+#' @param tab Tumor marker form from the raw redcap.
 #' @param dat_dict_sub The subset of the data dictionary with variables for
 #'   this instrument.
 #'
-#' @returns A dataframe similar to rad with additional derivations.
+#' @returns A dataframe similar to tum with additional derivations.
 #' @export
 #'
 #' @examples
-#' # derive_rad(rad, dat_dict_sub)
-derive_rad <- function(
+#' # build_dv_tab_tum(tum, dat_dict_sub)
+build_dv_tab_tum <- function(
   tab,
   dat_dict_sub
 ) {
@@ -19,8 +19,6 @@ derive_rad <- function(
     dat = tab,
     dict = dat_dict_sub
   )
-
-  rtn <- drugs_ca_rearrangement(rtn, prefix = "^rt_ca")
 
   return(rtn)
 }

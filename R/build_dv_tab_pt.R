@@ -1,4 +1,4 @@
-#' Derive the patient data table.
+#' Build derived variable table for patient form
 #'
 #' @param tab Curated pt table.
 #' @param dat_dict_sub Data dictionary with columns relevant to pt table.
@@ -7,7 +7,7 @@
 #' @export
 #'
 #' @examples
-derive_pt <- function(
+build_dv_tab_pt <- function(
   tab,
   dat_dict_sub
 ) {

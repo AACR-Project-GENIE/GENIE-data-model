@@ -1,15 +1,15 @@
-#' Derive medical oncologist form
+#' Build derived variable table for imaging form
 #'
-#' @param tab Medical oncologist form from the raw redcap.
+#' @param tab Imaging form from the raw redcap.
 #' @param dat_dict_sub The subset of the data dictionary with variables for
 #'   this instrument.
 #'
-#' @returns A dataframe similar to med_onc with additional derivations.
+#' @returns A dataframe similar to img with additional derivations.
 #' @export
 #'
 #' @examples
-#' # derive_med_onc(med_onc, dat_dict_sub)
-derive_med_onc <- function(
+#' # build_dv_tab_img(img, dat_dict_sub)
+build_dv_tab_img <- function(
   tab,
   dat_dict_sub
 ) {

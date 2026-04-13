@@ -1,4 +1,4 @@
-#' Derive cancer diagnosis form
+#' Build derived variable table for cancer diagnosis form
 #'
 #' @param tab Cancer diagnosis form from the raw redcap.
 #' @param dat_dict_sub The subset of the data dictionary with variables for this instrument.
@@ -9,7 +9,7 @@
 #' @export
 #'
 #' @examples # Going to need synthetic data probably...
-derive_ca_dx <- function(
+build_dv_tab_ca_dx <- function(
   tab,
   dat_dict_sub,
   cast_to_double = c("tr_eligible", 'age_dx')

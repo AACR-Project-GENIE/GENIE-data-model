@@ -1,15 +1,15 @@
-#' Derive pathology form
+#' Build derived variable table for medical oncologist form
 #'
-#' @param tab Pathology form from the raw redcap.
+#' @param tab Medical oncologist form from the raw redcap.
 #' @param dat_dict_sub The subset of the data dictionary with variables for
 #'   this instrument.
 #'
-#' @returns A dataframe similar to path with additional derivations.
+#' @returns A dataframe similar to med_onc with additional derivations.
 #' @export
 #'
 #' @examples
-#' # derive_path(path, dat_dict_sub)
-derive_path <- function(
+#' # build_dv_tab_med_onc(med_onc, dat_dict_sub)
+build_dv_tab_med_onc <- function(
   tab,
   dat_dict_sub
 ) {

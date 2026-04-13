@@ -8,7 +8,7 @@
 #' (`drugs_drug_oth*`) and mask columns are not included.
 #'
 #' @param dat A regimen-level data frame containing the wide `drugs_drug_<n>`
-#'   drug-name columns. Typically the output of earlier `derive_reg()` steps,
+#'   drug-name columns. Typically the output of earlier `build_dv_tab_reg()` steps,
 #'   after `map_drug_name()` has replaced drug codes with names.
 #'
 #' @returns `dat` with a `regimen_drugs` character column added.

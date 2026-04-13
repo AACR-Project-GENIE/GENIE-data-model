@@ -20,7 +20,7 @@ across the five drug slots in a regimen, expressed as days from DOB.
 Parallels the legacy derivation: a row-wise \code{pmin} over
 \code{drugs_enddt_int_1..drugs_enddt_int_5} with \code{na.rm = TRUE}. Note that the
 legacy gating on \code{drugs_dc_ynu == "Yes"} and the absence of investigational
-drugs is already enforced upstream in \code{\link[=derive_reg]{derive_reg()}} by masking
+drugs is already enforced upstream in \code{\link[=build_dv_tab_reg]{build_dv_tab_reg()}} by masking
 \verb{drugs_enddt_int_<n>} per drug slot, so no additional gating is applied
 here.
 }

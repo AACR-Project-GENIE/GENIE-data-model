@@ -1,4 +1,4 @@
-#' Derive CPT (cancer panel test) form
+#' Build derived variable table for cancer panel test form
 #'
 #' @param tab Cancer panel test form from the raw redcap.
 #' @param dat_dict_sub The subset of the data dictionary with variables for
@@ -8,8 +8,8 @@
 #' @export
 #'
 #' @examples
-#' # derive_cpt(cpt, dat_dict_sub)
-derive_cpt <- function(
+#' # build_dv_tab_cpt(cpt, dat_dict_sub)
+build_dv_tab_cpt <- function(
   tab,
   dat_dict_sub
 ) {
