@@ -80,7 +80,11 @@ build_dv_tab_ca_dx <- function(
       ca_tx_pre_path_stage = map_ca_tx_pre_path_stage(ca_tx_pre_path_stage),
       ca_stage = map_ca_stage(ca_stage),
       ca_stage_iv = map_ca_stage_iv(ca_stage_iv),
-      ca_dmets_yn = map_ca_dmets_yn(ca_dmets_yn)
+      ca_dmets_yn = map_ca_dmets_yn(ca_dmets_yn),
+      dplyr::across(
+        dplyr::starts_with("ca_first_dmets"),
+        map_ca_dmets_site
+      )
     )
 
   if ("ca_clin_group_stage" %in% names(rtn)) {
