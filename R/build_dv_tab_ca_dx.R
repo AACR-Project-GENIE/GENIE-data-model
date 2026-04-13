@@ -82,6 +82,13 @@ build_dv_tab_ca_dx <- function(
       ca_stage_iv = map_ca_stage_iv(ca_stage_iv)
     )
 
+  if ("ca_clin_group_stage" %in% names(rtn)) {
+    rtn <- rtn |>
+      dplyr::mutate(
+        ca_clin_group_stage = map_ca_clin_group_stage(ca_clin_group_stage)
+      )
+  }
+
   rtn <- add_mos_yrs_intervals(rtn) # anything ending in days.
 
   if (length(cast_to_double) > 0) {
