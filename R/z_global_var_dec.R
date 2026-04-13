@@ -122,6 +122,7 @@ utils::globalVariables(
     "age_at_seq_report",
     "cpt_report_int",
     "dob_cpt_report_days",
-    "cpt_number"
+    "cpt_number",
+    "dx_cpt_rep_days"
   )
 )
