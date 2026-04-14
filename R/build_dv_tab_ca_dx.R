@@ -55,8 +55,6 @@ build_dv_tab_ca_dx <- function(
     dplyr::relocate(ca_seq, .after = record_id)
 
   rtn <- add_institution(rtn)
-  rtn <- derive_stage_dx(rtn)
-  rtn <- derive_age_dx(rtn)
 
   rtn <- rtn |>
     dplyr::mutate(
@@ -78,9 +76,19 @@ build_dv_tab_ca_dx <- function(
       ca_path_t4_det = map_ca_clin_t4_det(ca_path_t4_det),
       ca_path_n_stage = map_ca_path_n_stage(ca_path_n_stage),
       ca_tx_pre_path_stage = map_ca_tx_pre_path_stage(ca_tx_pre_path_stage),
-      ca_stage = map_ca_stage(ca_stage),
-      ca_stage_iv = map_ca_stage_iv(ca_stage_iv),
       ca_dmets_yn = map_ca_dmets_yn(ca_dmets_yn),
+      ca_stage = map_ca_stage(ca_stage),
+      ca_stage_iv = map_ca_stage_iv(ca_stage_iv)
+    )
+
+  rtn <- fill_ca_stage(rtn)
+
+  rtn <- derive_stage_dx(rtn)
+
+  rtn <- derive_age_dx(rtn)
+
+  rtn <- rtn |>
+    dplyr::mutate(
       dplyr::across(
         dplyr::starts_with("ca_first_dmets"),
         map_ca_dmets_site
