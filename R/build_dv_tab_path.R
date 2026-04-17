@@ -27,7 +27,8 @@ build_dv_tab_path <- function(
   rtn <- rtn |>
     dplyr::mutate(
       path_proc_type = map_path_proc_type(path_proc_type),
-      path_proc = map_path_proc(path_proc)
+      path_proc = map_path_proc(path_proc),
+      path_proc_margins = map_path_proc_margins(path_proc_margins)
     )
 
   return(rtn)
