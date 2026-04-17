@@ -20,5 +20,9 @@ build_dv_tab_img <- function(
     dict = dat_dict_sub
   )
 
+  rtn <- add_institution(rtn)
+
+  rtn <- derive_scan_number(rtn)
+
   return(rtn)
 }
