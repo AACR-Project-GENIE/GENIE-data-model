@@ -4,13 +4,10 @@
 \alias{map_image_casite}
 \title{Map image_casite codes to ICD-O-3 site labels}
 \usage{
-map_image_casite(x, whitespace_match_legacy = TRUE)
+map_image_casite(x)
 }
 \arguments{
 \item{x}{A numeric (or character) vector of site codes.}
-
-\item{whitespace_match_legacy}{If \code{TRUE}, use four spaces between the ICD
-code and description to match the legacy data format. Default \code{FALSE}.}
 }
 \value{
 A character vector of labels.

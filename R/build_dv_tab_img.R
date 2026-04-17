@@ -37,6 +37,9 @@ build_dv_tab_img <- function(
       image_overall = map_image_overall(image_overall)
     )
 
+  # actually not sure if this is needed:
+  # rtn <- remove_duplicated_ca_site(rtn)
+
   casite_cols <- grep("^image_casite[0-9]+$", names(rtn), value = TRUE)
   rtn <- rtn |>
     dplyr::mutate(dplyr::across(dplyr::all_of(casite_cols), map_image_casite))
