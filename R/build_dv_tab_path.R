@@ -39,5 +39,7 @@ build_dv_tab_path <- function(
   rtn <- rtn |>
     dplyr::mutate(dplyr::across(dplyr::all_of(path_insitu_cols), map_path_insitu))
 
+  rtn <- derive_path_insitu_any(rtn)
+
   return(rtn)
 }
