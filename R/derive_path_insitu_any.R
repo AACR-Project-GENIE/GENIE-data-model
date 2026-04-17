@@ -1,6 +1,6 @@
-#' Derive path_insitu_any (count of specimens with in situ disease)
+#' Derive path_insitu_any (any specimen with in situ disease)
 #'
-#' Counts how many of the `path_insitu*` columns have value `"Yes"` per row.
+#' Returns `"Yes"` if any `path_insitu*` column is `"Yes"`, otherwise `"No"`.
 #' Should be called after [map_path_insitu()] has been applied.
 #'
 #' @param dat A data frame containing mapped `path_insitu*` columns.
@@ -16,7 +16,11 @@ derive_path_insitu_any <- function(dat) {
   dat |>
     dplyr::rowwise() |>
     dplyr::mutate(
-      path_insitu_any = sum(dplyr::c_across(dplyr::all_of(insitu_cols)) == "Yes", na.rm = TRUE)
+      path_insitu_any = dplyr::if_else(
+        any(dplyr::c_across(dplyr::all_of(insitu_cols)) == "Yes", na.rm = TRUE),
+        "Yes",
+        "No"
+      )
     ) |>
     dplyr::ungroup()
 }
