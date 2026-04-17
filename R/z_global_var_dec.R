@@ -130,6 +130,7 @@ utils::globalVariables(
     "scan_number",
     "image_inst_perf",
     "image_inst_inter",
-    "image_scan_type"
+    "image_scan_type",
+    "image_ca"
   )
 )
