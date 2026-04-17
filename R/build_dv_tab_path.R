@@ -20,5 +20,7 @@ build_dv_tab_path <- function(
     dict = dat_dict_sub
   )
 
+  rtn <- derive_path_proc_number(rtn)
+
   return(rtn)
 }
