@@ -31,5 +31,9 @@ build_dv_tab_path <- function(
       path_proc_margins = map_path_proc_margins(path_proc_margins)
     )
 
+  path_site_cols <- grep("^path_site[0-9]+$", names(rtn), value = TRUE)
+  rtn <- rtn |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(path_site_cols), map_path_site))
+
   return(rtn)
 }
