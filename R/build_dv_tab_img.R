@@ -37,5 +37,9 @@ build_dv_tab_img <- function(
       image_overall = map_image_overall(image_overall)
     )
 
+  casite_cols <- grep("^image_casite[0-9]+$", names(rtn), value = TRUE)
+  rtn <- rtn |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(casite_cols), map_image_casite))
+
   return(rtn)
 }
