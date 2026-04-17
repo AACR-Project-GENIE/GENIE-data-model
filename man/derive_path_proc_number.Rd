@@ -7,15 +7,16 @@
 derive_path_proc_number(dat)
 }
 \arguments{
-\item{dat}{A pathology-level data frame with columns \code{record_id},
-\code{path_proc_int}, and \code{redcap_repeat_instance}.}
+\item{dat}{A pathology-level data frame with columns \code{record_id} and
+\code{path_proc_int}.}
 }
 \value{
 \code{dat} with \code{path_proc_number} added.
 }
 \description{
-Numbers pathology records within each \code{record_id}, ordered by
-\code{path_proc_int} with ties broken by \code{redcap_repeat_instance}.
+Numbers pathology procedures within each \code{record_id} using dense rank on
+\code{path_proc_int}, so records sharing the same procedure date get the same
+number.
 }
 \examples{
 # derive_path_proc_number(path)

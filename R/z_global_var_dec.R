@@ -134,6 +134,7 @@ utils::globalVariables(
     "image_ca",
     "image_overall",
     "path_proc_int",
-    "path_proc_number"
+    "path_proc_number",
+    "path_rep_number"
   )
 )

@@ -22,5 +22,7 @@ build_dv_tab_path <- function(
 
   rtn <- derive_path_proc_number(rtn)
 
+  rtn <- derive_path_rep_number(rtn)
+
   return(rtn)
 }
