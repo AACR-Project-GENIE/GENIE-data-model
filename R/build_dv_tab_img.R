@@ -24,6 +24,8 @@ build_dv_tab_img <- function(
 
   rtn <- derive_scan_number(rtn)
 
+  rtn <- repair_scan_sites(rtn)
+
   rtn <- rtn |>
     dplyr::mutate(
       image_inst_perf = map_image_inst(image_inst_perf),
