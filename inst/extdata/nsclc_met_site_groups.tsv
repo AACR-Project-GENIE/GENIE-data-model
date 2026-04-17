@@ -1,0 +1,336 @@
+numeric_code	icdo3_site	classification	mets_site_group
+0	C00.0 External upper lip	Distant	Head and neck
+1	C00.1 External lower lip	Distant	Head and neck
+100	C10.0 Vallecula	Distant	Head and neck
+101	C10.1 Anterior surface of epiglottis	Distant	Head and neck
+102	C10.2 Lateral wall of oropharynx	Distant	Head and neck
+103	C10.3 Posterior wall of oropharynx	Distant	Head and neck
+104	C10.4 Branchial cleft	Distant	Head and neck
+108	C10.8 Overlapping lesions of oropharynx	Distant	Head and neck
+109	C10.9 Oropharynx NOS	Distant	Head and neck
+110	C11.0 Superior wall of nasopharynx	Distant	Head and neck
+111	C11.1 Posterior wall of nasopharynx	Distant	Head and neck
+112	C11.2 Lateral wall of nasopharynx	Distant	Head and neck
+113	C11.3 Anterior wall of nasopharynx	Distant	Head and neck
+118	C11.8 Overlapping lesion of nasopharynx	Distant	Head and neck
+119	C11.9 Nasopharynx NOS	Distant	Head and neck
+129	C12.9 Pyriform sinus	Distant	Head and neck
+130	C13.0 Postcricoid region	Distant	Head and neck
+131	C13.1 Hypopharyngeal aspect of aryepiglottic fold	Distant	Head and neck
+132	C13.2 Posterior wall of hypopharynx	Distant	Head and neck
+138	C13.8 Overlapping lesion of hypopharynx	Distant	Head and neck
+139	C13.9 Hypopharynx NOS	Distant	Head and neck
+140	C14.0 Pharynx NOS	Distant	Head and neck
+142	C14.2 Waldeyer ring	Distant	Head and neck
+148	C14.8 Overlapping lesion of lip oral cavity and pharynx	Distant	Head and neck
+150	C15.0 Cervical esophagus	Distant	Head and neck
+151	C15.1 Thoracic esophagus	Distant	Thorax
+152	C15.2 Abdominal esophagus	Distant	Abdomen
+153	C15.3 Upper third of esophagus	Distant	Head and neck
+154	C15.4 Middle third of esophagus	Distant	Thorax
+155	C15.5 Lower third of esophagus	Distant	Abdomen
+158	C15.8 Overlapping lesion of esophagus	Distant	Rare and nos
+159	C15.9 Esophagus NOS	Distant	Rare and nos
+160	C16.0 Cardia NOS	Distant	Abdomen
+161	C16.1 Fundus of stomach	Distant	Abdomen
+162	C16.2 Body of stomach	Distant	Abdomen
+163	C16.3 Gastric antrum	Distant	Abdomen
+164	C16.4 Pylorus	Distant	Abdomen
+165	C16.5 Lesser curvature of stomach NOS	Distant	Abdomen
+166	C16.6 Greater curvature of stomach NOS	Distant	Abdomen
+168	C16.8 Overlapping lesion of stomach	Distant	Abdomen
+169	C16.9 Stomach NOS	Distant	Abdomen
+170	C17.0 Duodenum	Distant	Abdomen
+171	C17.1 Jejunum	Distant	Abdomen
+172	C17.2 Ileum	Distant	Abdomen
+173	C17.3 Meckel diverticulum	Distant	Abdomen
+178	C17.8 Overlapping lesion of small intestine	Distant	Abdomen
+179	C17.9 Small intestine NOS	Distant	Abdomen
+180	C18.0 Cecum	Distant	Abdomen
+181	C18.1 Appendix	Distant	Abdomen
+182	C18.2 Ascending colon	Distant	Abdomen
+183	C18.3 Hepatic flexure of colon	Distant	Abdomen
+184	C18.4 Transverse colon	Distant	Abdomen
+185	C18.5 Splenic flexure of colon	Distant	Abdomen
+186	C18.6 Descending colon	Distant	Abdomen
+187	C18.7 Sigmoid colon	Distant	Pelvis
+188	C18.8 Overlapping lesion of colon	Distant	Abdomen
+189	C18.9 Colon NOS	Distant	Abdomen
+19	C01.9 Base of tongue NOS	Distant	Head and neck
+199	C19.9 Rectosigmoid junction	Distant	Pelvis
+2	C00.2 External lip NOS	Distant	Head and neck
+20	C02.0 Dorsal surface of tongue NOS	Distant	Head and neck
+209	C20.9 Rectum NOS	Distant	Pelvis
+21	C02.1 Border of tongue	Distant	Head and neck
+210	C21.0 Anus NOS	Distant	Pelvis
+211	C21.1 Anal canal	Distant	Pelvis
+212	C21.2 Cloacogenic zone	Distant	Pelvis
+218	C21.8 Overlapping lesion of rectum anus and anal canal	Distant	Pelvis
+22	C02.2 Ventral surface of tongue NOS	Distant	Head and neck
+220	C22.0 Liver	Distant	Liver
+221	C22.1 intrahepatic bile duct	Distant	Abdomen
+23	C02.3 Anterior 2/3 of tongue NOS	Distant	Head and neck
+239	C23.9 Gallbladder	Distant	Abdomen
+24	C02.4 Lingual tonsil	Distant	Head and neck
+240	C24.0 Extrahepatic bile duct	Distant	Abdomen
+241	C24.1 Ampulla of Vater	Distant	Abdomen
+248	C24.8 Overlapping lesion of biliary tract	Distant	Abdomen
+249	C24.9 Biliary tract NOS	Distant	Abdomen
+250	C25.0 Head of pancreas	Distant	Abdomen
+251	C25.1 Body of pancreas	Distant	Abdomen
+252	C25.2 Tail of pancreas	Distant	Abdomen
+253	C25.3 Pancreatic duct	Distant	Abdomen
+254	C25.4 Islets of Langerhans	Distant	Abdomen
+257	C25.7 Other specified parts of pancreas	Distant	Abdomen
+258	C25.8 Overlapping lesion of pancreas	Distant	Abdomen
+259	C25.9 Pancreas NOS	Distant	Abdomen
+260	C26.0 Intestinal tract NOS	Distant	Abdomen
+268	C26.8 Overlapping lesion of digestive system	Distant	Abdomen
+269	C26.9 Gastrointestinal tract NOS	Distant	Abdomen
+28	C02.8 Overlapping lesion of tongue	Distant	Head and neck
+29	C02.9 Tongue NOS	Distant	Head and neck
+3	C00.3 Mucosa of upper lip	Distant	Head and neck
+30	C03.0 Upper Gum	Distant	Head and neck
+300	C30.0 Nasal cavity	Distant	Head and neck
+301	C30.1 Middle ear	Distant	Head and neck
+31	C03.1 Lower gum	Distant	Head and neck
+310	C31.0 Maxillary sinus	Distant	Head and neck
+311	C31.1 Ethmoid sinus	Distant	Head and neck
+312	C31.2 Frontal sinus	Distant	Head and neck
+313	C31.3 Sphenoid sinus	Distant	Head and neck
+318	C31.8 Overlapping lesion of accessory sinuses	Distant	Head and neck
+319	C31.9 Accessory sinus NOS	Distant	Head and neck
+320	C32.0 Glottis	Distant	Head and neck
+321	C32.1 Supraglottis	Distant	Head and neck
+322	C32.2 Subglottis	Distant	Head and neck
+323	C32.3 Laryngeal cartilage	Distant	Head and neck
+328	C32.8 Overlapping lesion of larynx	Distant	Head and neck
+329	C32.9 Larynx NOS	Distant	Head and neck
+339	C33.9 Trachea	Distant	Thorax
+340	C34.0 Main bronchus	Local/Regional	Thorax
+341	C34.1 Upper lobe lung	Local/Regional	Thorax
+342	C34.2 Middle lobe lung	Local/Regional	Thorax
+343	C34.3 Lower lobe lung	Local/Regional	Thorax
+348	C34.8 Overlapping lesion of lung	Local/Regional	Thorax
+349	C34.9 Lung NOS	Local/Regional	Thorax
+379	C37.9 Thymus	Distant	Thorax
+380	C38.0 Heart	Distant	Thorax
+381	C38.1 Anterior mediastinum	Distant	Thorax
+382	C38.2 Posterior mediastinum	Distant	Thorax
+383	C38.3 Mediastinum NOS	Distant	Thorax
+384	C38.4 Pleura NOS	Distant	Thorax
+388	C38.8 Overlapping lesion of heart mediastinum and pleura	Distant	Thorax
+39	C03.9 Gum NOS	Distant	Head and neck
+390	C39.0 Upper respiratory tract NOS	Distant	Thorax
+398	C39.8 Overlapping lesion of respiratory system and intrathoracic organs	Distant	Thorax
+399	C39.9 Ill-defined sites within respiratory system	Distant	Thorax
+4	C00.4 Mucosa of lower lip	Distant	Head and neck
+40	C04.0 Anterior floor of mouth	Distant	Head and neck
+400	C40.0 Long bones of upper limb scapula and associated joints	Distant	Bone
+401	C40.1 Short bones of upper limb and associated joints	Distant	Bone
+402	C40.2 Long bones of lower limb and associated joints	Distant	Bone
+403	C40.3 Short bones of lower limb and associated joints	Distant	Bone
+408	C40.8 Overlapping lesion of bones joints and articular cartilage of limbs	Distant	Bone
+409	C40.9 Bone of limb NOS	Distant	Bone
+41	C04.1 Lateral floor of mouth	Distant	Head and neck
+410	C41.0 Bones of skull and face and associated joints	Distant	Bone
+411	C41.1 Mandible	Distant	Head and neck
+412	C41.2 Vertebral column	Distant	Bone
+413	C41.3 Rib sternum clavicle and associated joints	Distant	Thorax
+414	C41.4 Pelvic bones sacrum coccyx and associated joints	Distant	Bone
+418	C41.8 Overlapping lesion of bones joints and articular cartilage	Distant	Bone
+419	C41.9 Bone NOS	Distant	Bone
+420	C42.0 Blood	Distant	Heme
+421	C42.1 Bone marrow	Distant	Heme
+422	C42.2 Spleen	Distant	Abdomen
+423	C42.3 Reticuloendothelial system NOS	Distant	Heme
+424	C42.4 Hematopoietic system NOS	Distant	Heme
+440	C44.0 Skin of lip NOS	Distant	Head and neck
+441	C44.1 Eyelid	Distant	Head and neck
+442	C44.2 External ear	Distant	Head and neck
+443	C44.3 Skin of other and unspecified parts of face	Distant	Head and neck
+444	C44.4 Skin of scalp and neck	Distant	Head and neck
+445	C44.5 Skin of trunk	Distant	Trunk
+446	C44.6 Skin of upper limb and shoulder	Distant	Extremity
+447	C44.7 Skin of lower limb and hip	Distant	Extremity
+448	C44.8 Overlapping lesion of skin	Distant	Rare and nos
+449	C44.9 Skin NOS	Distant	Rare and nos
+470	C47.0 Peripheral nerves and autonomic nervous system of head face and neck	Distant	Head and neck
+471	C47.1 Peripheral nerves and autonomic nervous system of upper limb and shoulder	Distant	Extremity
+472	C47.2 Peripheral nerves and autonomic nervous system of lower limb and hip	Distant	Extremity
+473	C47.3 Peripheral nerves and autonomic nervous system of thorax	Local/Regional	Thorax
+474	C47.4 Peripheral nerves and autonomic nervous system of abdomen	Distant	Abdomen
+475	C47.5 Peripheral nerves and autonomic nervous system of pelvis	Distant	Pelvis
+476	C47.6 Peripheral nerves and autonomic nervous system of trunk NOS	Distant	Abdomen
+478	C47.8 Overlapping lesion of peripheral nerves and autonomic nervous system	Distant	Rare and nos
+479	C47.9 Autonomic nervous system NOS	Distant	Rare and nos
+48	C04.8 Overlapping lesion of floor of mouth	Distant	Head and neck
+480	C48.0 Retroperitoneum	Distant	Abdomen
+481	C48.1 Specified parts of peritoneum	Distant	Abdomen
+482	C48.2 Peritoneum NOS	Distant	Abdomen
+488	C48.8 Overlapping lesion of retroperitoneum and peritoneum	Distant	Abdomen
+49	C04.9 Floor of mouth NOS	Distant	Head and neck
+490	C49.0 Connective Subcutaneous and other soft tissues of head face and neck	Distant	Head and neck
+491	C49.1 Connective Subcutaneous and other soft tissues of upper limb and shoulder	Distant	Extremity
+492	C49.2 Connective Subcutaneous and other soft tissues of lower limb and hip	Distant	Extremity
+493	C49.3 Connective Subcutaneous and other soft tissues of thorax	Local/Regional	Thorax
+494	C49.4 Connective Subcutaneous and other soft tissues of abdomen	Distant	Abdomen
+495	C49.5 Connective Subcutaneous and other soft tissues of pelvis	Distant	Pelvis
+496	C49.6 Connective Subcutaneous and other soft tissues of trunk NOS	Distant	Abdomen
+498	C49.8 Overlapping lesion of connective subcutaneous and other soft tissues	Distant	Rare and nos
+499	C49.9 Connective Subcutaneous and other soft tissues NOS	Distant	Rare and nos
+5	C00.5 Mucosa of lip NOS	Distant	Head and neck
+50	C05.0 Hard palate	Distant	Head and neck
+500	C50.0 Nipple	Distant	Breast
+501	C50.1 Central portion of breast	Distant	Breast
+502	C50.2 Upper-inner quadrant of breast	Distant	Breast
+503	C50.3 Lower-inner quadrant of breast	Distant	Breast
+504	C50.4 Upper-outer quadrant of breast	Distant	Breast
+505	C50.5 Lower-outer quadrant of breast	Distant	Breast
+506	C50.6 Axillary tail of breast	Distant	Breast
+508	C50.8 Overlapping lesion of breast	Distant	Breast
+509	C50.9 Breast NOS	Distant	Breast
+51	C05.1 Soft palate NOS	Distant	Head and neck
+510	C51.0 Labium majus	Distant	Pelvis
+511	C51.1 Labium minus	Distant	Pelvis
+512	C51.2 Clitoris	Distant	Pelvis
+518	C51.8 Overlapping lesion of vulva	Distant	Pelvis
+519	C51.9 Vulva NOS	Distant	Pelvis
+52	C05.2 Uvula	Distant	Head and neck
+529	C52.9 Vagina NOS	Distant	Pelvis
+530	C53.0 Endocervix	Distant	Pelvis
+531	C53.1 Exocervix	Distant	Pelvis
+538	C53.8 Overlapping lesion of cervix uteri	Distant	Pelvis
+539	C53.9 Cervix uteri	Distant	Pelvis
+540	C54.0 Isthmus uteri	Distant	Pelvis
+541	C54.1 Endometrium	Distant	Pelvis
+542	C54.2 Myometrium	Distant	Pelvis
+543	C54.3 Fundus uteri	Distant	Pelvis
+548	C54.8 Overlapping lesion of corpus uteri	Distant	Pelvis
+549	C54.9 Corpus uteri	Distant	Pelvis
+559	C55.9 Uterus NOS	Distant	Pelvis
+569	C56.9 Ovary	Distant	Pelvis
+570	C57.0 Fallopian tube	Distant	Pelvis
+571	C57.1 Broad ligament	Distant	Pelvis
+572	C57.2 Round ligament	Distant	Pelvis
+573	C57.3 Parametrium	Distant	Pelvis
+574	C57.4 Uterine adnexa	Distant	Pelvis
+577	C57.7 Other specified parts of female genital organs	Distant	Pelvis
+578	C57.8 Overlapping lesion of female genital organs	Distant	Pelvis
+579	C57.9 Female genital tract NOS	Distant	Pelvis
+58	C05.8 Overlapping lesion of palate	Distant	Head and neck
+589	C58.9 Placenta	Distant	Pelvis
+59	C05.9 Palate NOS	Distant	Head and neck
+6	C00.6 Commissure of lip	Distant	Head and neck
+60	C06.0 Cheek mucosa	Distant	Head and neck
+600	C60.0 Prepuce	Distant	Pelvis
+601	C60.1 Glans penis	Distant	Pelvis
+602	C60.2 Body of penis	Distant	Pelvis
+608	C60.8 Overlapping lesion of penis	Distant	Pelvis
+609	C60.9 Penis NOS	Distant	Pelvis
+61	C06.1 Vestibule of mouth	Distant	Head and neck
+619	C61.9 Prostate gland	Distant	Pelvis
+62	C06.2 Retromolar area	Distant	Head and neck
+620	C62.0 Undescended testis	Distant	Pelvis
+621	C62.1 Descended testis	Distant	Pelvis
+629	C62.9 Testis NOS	Distant	Pelvis
+630	C63.0 Epididymis	Distant	Pelvis
+631	C63.1 Spermatic cord	Distant	Pelvis
+632	C63.2 Scrotum NOS	Distant	Pelvis
+637	C63.7 Other specified parts of male genital organs	Distant	Pelvis
+638	C63.8 Overlapping lesion of male genital organs	Distant	Pelvis
+639	C63.9 Male genital organs NOS	Distant	Pelvis
+649	C64.9 Kidney NOS	Distant	Abdomen
+659	C65.9 Renal pelvis	Distant	Abdomen
+669	C66.9 Ureter	Distant	Pelvis
+670	C67.0 Trigone of bladder	Distant	Pelvis
+671	C67.1 Dome of bladder	Distant	Pelvis
+672	C67.2 Lateral wall of bladder	Distant	Pelvis
+673	C67.3 Anterior wall of bladder	Distant	Pelvis
+674	C67.4 Posterior wall of bladder	Distant	Pelvis
+675	C67.5 Bladder neck	Distant	Pelvis
+676	C67.6 Ureteric orifice	Distant	Pelvis
+677	C67.7 Urachus	Distant	Pelvis
+678	C67.8 Overlapping lesion of bladder	Distant	Pelvis
+679	C67.9 Bladder NOS	Distant	Pelvis
+68	C06.8 Overlapping lesion of other and unspecified parts of mouth	Distant	Head and neck
+680	C68.0 Urethra	Distant	Pelvis
+681	C68.1 Paraurethral gland	Distant	Pelvis
+688	C68.8 Overlapping lesion of urinary organs	Distant	Pelvis
+689	C68.9 Urinary system NOS	Distant	Pelvis
+69	C06.9 Mouth NOS	Distant	Head and neck
+690	C69.0 Conjunctiva	Distant	Head and neck
+691	C69.1 Cornea NOS	Distant	Head and neck
+692	C69.2 Retina	Distant	Brain/cns
+693	C69.3 Choroid	Distant	Head and neck
+694	C69.4 Ciliary body	Distant	Head and neck
+695	C69.5 Lacrimal gland	Distant	Head and neck
+696	C69.6 Orbit NOS	Distant	Head and neck
+698	C69.8 Overlapping lesion of eye and adnexa	Distant	Head and neck
+699	C69.9 Eye NOS	Distant	Head and neck
+700	C70.0 Cerebral meninges	Distant	Brain/cns
+701	C70.1 Spinal meninges	Distant	Brain/cns
+709	C70.9 Meninges NOS	Distant	Brain/cns
+710	C71.0 Cerebrum	Distant	Brain/cns
+711	C71.1 Frontal lobe	Distant	Brain/cns
+712	C71.2 Temporal lobe	Distant	Brain/cns
+713	C71.3 Parietal lobe	Distant	Brain/cns
+714	C71.4 Occipital lobe	Distant	Brain/cns
+715	C71.5 Ventricle NOS	Distant	Brain/cns
+716	C71.6 Cerebellum NOS	Distant	Brain/cns
+717	C71.7 Brain stem	Distant	Brain/cns
+718	C71.8 Overlapping lesion of brain	Distant	Brain/cns
+719	C71.9 Brain NOS	Distant	Brain/cns
+720	C72.0 Spinal cord	Distant	Brain/cns
+721	C72.1 Cauda equina	Distant	Brain/cns
+722	C72.2 Olfactory nerve	Distant	Brain/cns
+723	C72.3 Optic nerve	Distant	Brain/cns
+724	C72.4 Acoustic nerve	Distant	Brain/cns
+725	C72.5 Cranial nerve NOS	Distant	Brain/cns
+728	C72.8 Overlapping lesion of brain and central nervous system	Distant	Brain/cns
+729	C72.9 Nervous system NOS	Distant	Rare and nos
+739	C73.9 Thyroid gland	Distant	Head and neck
+740	C74.0 Cortex of adrenal gland	Distant	Abdomen
+741	C74.1 Medulla of adrenal gland	Distant	Abdomen
+749	C74.9 Adrenal gland NOS	Distant	Abdomen
+750	C75.0 Parathyroid gland	Distant	Head and neck
+751	C75.1 Pituitary gland	Distant	Head and neck
+752	C75.2 Craniopharyngeal duct	Distant	Head and neck
+753	C75.3 Pineal gland	Distant	Head and neck
+754	C75.4 Carotid body	Distant	Head and neck
+755	C75.5 Aortic body and other paraganglia	Distant	Abdomen
+758	C75.8 Overlapping lesion of endocrine glands and related structures	Distant	Rare and nos
+759	C75.9 Endocrine gland NOS	Distant	Rare and nos
+760	C76.0 Head face or neck NOS	Distant	Head and neck
+761	C76.1 Thorax NOS	Local/Regional	Thorax
+762	C76.2 Abdomen NOS	Distant	Abdomen
+763	C76.3 Pelvis NOS	Distant	Pelvis
+764	C76.4 Upper limb NOS	Distant	Extremity
+765	C76.5 Lower limb NOS	Distant	Extremity
+767	C76.7 Other ill-defined sites	Distant	Rare and nos
+768	C76.8 Overlapping lesion of ill-defined sites	Distant	Rare and nos
+770	C77.0 Lymph nodes of head face and neck	Distant	Head and neck
+771	C77.1 Intrathoracic lymph nodes	Local/Regional	Thorax
+772	C77.2 Intra-abdominal lymph nodes	Distant	Abdomen
+773	C77.3 Lymph nodes of axilla or arm	Distant	Thorax
+774	C77.4 Lymph nodes of inguinal region or leg	Distant	Extremity
+775	C77.5 Pelvic lymph nodes	Distant	Pelvis
+778	C77.8 Lymph nodes of multiple regions	Distant	Rare and nos
+779	C77.9 Lymph node NOS		
+79	C07.9 Parotid gland	Distant	Head and neck
+8	C00.8 Overlapping lesion of lip	Distant	Head and neck
+80	C08.0 Submandibular gland	Distant	Head and neck
+809	C80.9 Unknown primary site		
+81	C08.1 Sublingual gland	Distant	Head and neck
+88	C08.8 Overlapping lesion of major salivary glands	Distant	Head and neck
+89	C08.9 Major salivary gland NOS	Distant	Head and neck
+9	C00.9 Lip NOS	Distant	Head and neck
+90	C09.0 Tonsillar fossa	Distant	Head and neck
+900	F10 Cerebral Spinal Fluid	Distant	Brain/cns
+901	F20 Peritoneal Fluid/Ascites	Distant	Abdomen
+902	F30 Pleural Fluid	Distant	Thorax
+903	F40 Urine	Distant	Pelvis
+905	F50 Pericardial Fluid	Distant	Thorax
+91	C09.1 Tonsillar pillar	Distant	Head and neck
+98	C09.8 Overlapping lesion of tonsil	Distant	Head and neck
+99	C09.9 Tonsil NOS	Distant	Head and neck

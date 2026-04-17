@@ -2,7 +2,7 @@
 % Please edit documentation in R/derive_path_insitu_any.R
 \name{derive_path_insitu_any}
 \alias{derive_path_insitu_any}
-\title{Derive path_insitu_any (count of specimens with in situ disease)}
+\title{Derive path_insitu_any (any specimen with in situ disease)}
 \usage{
 derive_path_insitu_any(dat)
 }
@@ -13,7 +13,7 @@ derive_path_insitu_any(dat)
 \code{dat} with \code{path_insitu_any} added.
 }
 \description{
-Counts how many of the \verb{path_insitu*} columns have value \code{"Yes"} per row.
+Returns \code{"Yes"} if any \verb{path_insitu*} column is \code{"Yes"}, otherwise \code{"No"}.
 Should be called after \code{\link[=map_path_insitu]{map_path_insitu()}} has been applied.
 }
 \examples{
