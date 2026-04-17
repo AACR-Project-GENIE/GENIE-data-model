@@ -35,5 +35,9 @@ build_dv_tab_path <- function(
   rtn <- rtn |>
     dplyr::mutate(dplyr::across(dplyr::all_of(path_site_cols), map_path_site))
 
+  path_insitu_cols <- grep("^path_insitu[0-9]+$", names(rtn), value = TRUE)
+  rtn <- rtn |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(path_insitu_cols), map_path_insitu))
+
   return(rtn)
 }
