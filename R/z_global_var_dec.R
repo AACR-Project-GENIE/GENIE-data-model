@@ -127,6 +127,8 @@ utils::globalVariables(
     "ca_clin_group_stage",
     "ca_dmets_yn",
     "image_scan_int",
-    "scan_number"
+    "scan_number",
+    "image_inst_perf",
+    "image_inst_inter"
   )
 )
