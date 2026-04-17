@@ -136,6 +136,7 @@ utils::globalVariables(
     "path_proc_int",
     "path_proc_number",
     "path_rep_number",
-    "path_proc_type"
+    "path_proc_type",
+    "path_proc"
   )
 )

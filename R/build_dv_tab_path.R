@@ -25,7 +25,10 @@ build_dv_tab_path <- function(
   rtn <- derive_path_rep_number(rtn)
 
   rtn <- rtn |>
-    dplyr::mutate(path_proc_type = map_path_proc_type(path_proc_type))
+    dplyr::mutate(
+      path_proc_type = map_path_proc_type(path_proc_type),
+      path_proc = map_path_proc(path_proc)
+    )
 
   return(rtn)
 }
