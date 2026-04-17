@@ -27,7 +27,8 @@ build_dv_tab_img <- function(
   rtn <- rtn |>
     dplyr::mutate(
       image_inst_perf = map_image_inst(image_inst_perf),
-      image_inst_inter = map_image_inst(image_inst_inter)
+      image_inst_inter = map_image_inst(image_inst_inter),
+      image_scan_type = map_image_scan_type(image_scan_type)
     )
 
   return(rtn)
