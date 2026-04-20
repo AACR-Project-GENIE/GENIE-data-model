@@ -52,7 +52,12 @@ pivot_stream_long <- function(df, stream) {
 #'
 #' @examples
 #' # combine_dmets_derivations(scan_first, path_first, dx_first, ca_ind)
-combine_dmets_derivations <- function(scan_first, path_first, dx_first, ca_ind) {
+combine_dmets_derivations <- function(
+  scan_first,
+  path_first,
+  dx_first,
+  ca_ind
+) {
   long <- dplyr::bind_rows(
     pivot_stream_long(scan_first, "scan"),
     pivot_stream_long(path_first, "path"),

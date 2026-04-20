@@ -160,6 +160,8 @@ utils::globalVariables(
     "timing",
     "dmets",
     "tt_dmets",
-    "dx_to_dmets_days"
+    "dx_to_dmets_days",
+    "dmets_any",
+    "dmets_stage_i_iii"
   )
 )
