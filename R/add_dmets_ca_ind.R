@@ -14,6 +14,9 @@
 #'   every site is classified as Distant (via [derive_scan_dmets_long_2()]).
 #'   If `FALSE` (default), include all scans with any Distant site (via
 #'   [derive_scan_dmets_long()]).
+#' @param include_indeterminate If `TRUE`, include sites with `NA`
+#'   classification (Indeterminate) alongside Distant in all three streams.
+#'   Default `FALSE`.
 #'
 #' @returns The `tables` list with `ca_ind` updated to include `dmets_*`,
 #'   `dx_to_dmets_*_days`, `dmets_stage_i_iii`, and `dx_to_dmets_days`.
@@ -21,22 +24,25 @@
 #'
 #' @examples
 #' # tables <- add_dmets_ca_ind(tables, c("Non Small Cell Lung Cancer", "Lung Cancer, NOS"))
-add_dmets_ca_ind <- function(tables, cohort_ca_types, only_full_dmet_scans = FALSE) {
+add_dmets_ca_ind <- function(tables, cohort_ca_types,
+                             only_full_dmet_scans = FALSE,
+                             include_indeterminate = FALSE) {
   ca_ind <- tables$ca_ind
   img <- tables$img
   path <- tables$path
 
   scan_long <- if (only_full_dmet_scans) {
-    derive_scan_dmets_long_2(img, ca_ind)
+    derive_scan_dmets_long_2(img, ca_ind, include_indeterminate)
   } else {
-    derive_scan_dmets_long(img, ca_ind)
+    derive_scan_dmets_long(img, ca_ind, include_indeterminate)
   }
   scan_first <- derive_scan_dmets_first(scan_long)
 
-  path_long <- derive_path_dmets_long(path, ca_ind, cohort_ca_types)
+  path_long <- derive_path_dmets_long(path, ca_ind, cohort_ca_types,
+                                       include_indeterminate)
   path_first <- derive_path_dmets_first(path_long)
 
-  dx_long <- derive_dx_dmets_long(ca_ind)
+  dx_long <- derive_dx_dmets_long(ca_ind, include_indeterminate)
   dx_first <- derive_dx_dmets_first(dx_long)
 
   dmets_combined <- combine_dmets_derivations(

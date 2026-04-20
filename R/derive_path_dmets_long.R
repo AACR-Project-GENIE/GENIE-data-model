@@ -17,6 +17,8 @@
 #' @param cohort_ca_types Character vector of `path_ca_type` values that
 #'   correspond to the cohort's cancer type (e.g.
 #'   `c("Non Small Cell Lung Cancer", "Lung Cancer, NOS")` for NSCLC).
+#' @param include_indeterminate If `TRUE`, include sites with `NA`
+#'   classification (Indeterminate) alongside Distant. Default `FALSE`.
 #'
 #' @returns A long data frame with potentially multiple rows per
 #'   patient-cancer-site group, including columns `mets_site_group`,
@@ -25,7 +27,8 @@
 #'
 #' @examples
 #' # derive_path_dmets_long(path, ca_ind, c("Non Small Cell Lung Cancer", "Lung Cancer, NOS"))
-derive_path_dmets_long <- function(path, ca_ind, cohort_ca_types) {
+derive_path_dmets_long <- function(path, ca_ind, cohort_ca_types,
+                                   include_indeterminate = FALSE) {
   met_groups <- load_nsclc_met_site_groups()
 
   join_cols <- c(
@@ -90,7 +93,9 @@ derive_path_dmets_long <- function(path, ca_ind, cohort_ca_types) {
         dplyr::select(icdo3_site, classification, mets_site_group),
       by = c("path_site_label" = "icdo3_site")
     ) |>
-    dplyr::filter(classification == "Distant")
+    dplyr::filter(
+      classification == "Distant" | (include_indeterminate & is.na(classification))
+    )
 
   path_mets <- ca_ind |>
     dplyr::select(record_id, ca_seq, ca_cadx_int, stage_dx) |>

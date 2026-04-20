@@ -11,6 +11,8 @@
 #'   `ca_first_dmets*` columns (after [build_dv_tab_ca_dx()] has been
 #'   applied). Must contain `record_id`, `ca_seq`, `ca_cadx_int`, `stage_dx`,
 #'   `ca_dmets_yn`, and `ca_first_dmets*` columns.
+#' @param include_indeterminate If `TRUE`, include sites with `NA`
+#'   classification (Indeterminate) alongside Distant. Default `FALSE`.
 #'
 #' @returns A long data frame with potentially multiple rows per
 #'   patient-cancer-site group, including columns `mets_site_group`,
@@ -19,7 +21,7 @@
 #'
 #' @examples
 #' # derive_dx_dmets_long(ca_ind)
-derive_dx_dmets_long <- function(ca_ind) {
+derive_dx_dmets_long <- function(ca_ind, include_indeterminate = FALSE) {
   met_groups <- load_nsclc_met_site_groups()
 
   dmets_cols <- grep("^ca_first_dmets[0-9]+$", names(ca_ind), value = TRUE)
@@ -44,7 +46,9 @@ derive_dx_dmets_long <- function(ca_ind) {
         dplyr::select(icdo3_site, classification, mets_site_group),
       by = c("dmets_label" = "icdo3_site")
     ) |>
-    dplyr::filter(classification == "Distant")
+    dplyr::filter(
+      classification == "Distant" | (include_indeterminate & is.na(classification))
+    )
 
   ca_ind |>
     dplyr::select(record_id, ca_seq, ca_cadx_int, stage_dx) |>

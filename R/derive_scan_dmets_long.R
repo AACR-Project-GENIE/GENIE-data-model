@@ -12,6 +12,8 @@
 #'   [build_dv_tab_img()] has been applied).
 #' @param ca_ind Index cancer subset of the cancer diagnosis form. Must contain
 #'   `record_id`, `ca_seq`, `ca_cadx_int`, and `stage_dx`.
+#' @param include_indeterminate If `TRUE`, include sites with `NA`
+#'   classification (Indeterminate) alongside Distant. Default `FALSE`.
 #'
 #' @returns A long data frame with potentially multiple rows per
 #'   patient-cancer-site group, including columns `mets_site_group`,
@@ -20,7 +22,7 @@
 #'
 #' @examples
 #' # derive_scan_dmets_long(img, ca_ind)
-derive_scan_dmets_long <- function(img, ca_ind) {
+derive_scan_dmets_long <- function(img, ca_ind, include_indeterminate = FALSE) {
   met_groups <- load_nsclc_met_site_groups()
 
   casite_cols <- grep("^image_casite[0-9]+$", names(img), value = TRUE)
@@ -55,7 +57,9 @@ derive_scan_dmets_long <- function(img, ca_ind) {
         dplyr::select(icdo3_site, classification, mets_site_group),
       by = c("casite_label" = "icdo3_site")
     ) |>
-    dplyr::filter(classification == "Distant")
+    dplyr::filter(
+      classification == "Distant" | (include_indeterminate & is.na(classification))
+    )
 
   ca_ind |>
     dplyr::select(record_id, ca_seq, ca_cadx_int, stage_dx) |>
