@@ -4,7 +4,7 @@
 \alias{derive_scan_dmets_long_2}
 \title{Identify distant metastases from imaging scans (all-distant-sites only)}
 \usage{
-derive_scan_dmets_long_2(img, ca_ind)
+derive_scan_dmets_long_2(img, ca_ind, include_indeterminate = FALSE)
 }
 \arguments{
 \item{img}{Imaging data with mapped \verb{image_casite*} columns (after
@@ -12,6 +12,9 @@ derive_scan_dmets_long_2(img, ca_ind)
 
 \item{ca_ind}{Index cancer subset of the cancer diagnosis form. Must contain
 \code{record_id}, \code{ca_seq}, \code{ca_cadx_int}, and \code{stage_dx}.}
+
+\item{include_indeterminate}{If \code{TRUE}, include sites with \code{NA}
+classification (Indeterminate) alongside Distant. Default \code{FALSE}.}
 }
 \value{
 A long data frame with potentially multiple rows per

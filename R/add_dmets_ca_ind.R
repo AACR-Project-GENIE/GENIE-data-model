@@ -17,6 +17,9 @@
 #' @param include_indeterminate If `TRUE`, include sites with `NA`
 #'   classification (Indeterminate) alongside Distant in all three streams.
 #'   Default `FALSE`.
+#' @param first_cancer_only If `TRUE`, only populate `dmets_stage_i_iii`
+#'   and `dx_to_dmets_days` for the patient's first index cancer (lowest
+#'   `ca_seq`). Default `FALSE`.
 #'
 #' @returns The `tables` list with `ca_ind` updated to include `dmets_*`,
 #'   `dx_to_dmets_*_days`, `dmets_stage_i_iii`, and `dx_to_dmets_days`.
@@ -26,7 +29,8 @@
 #' # tables <- add_dmets_ca_ind(tables, c("Non Small Cell Lung Cancer", "Lung Cancer, NOS"))
 add_dmets_ca_ind <- function(tables, cohort_ca_types,
                              only_full_dmet_scans = FALSE,
-                             include_indeterminate = FALSE) {
+                             include_indeterminate = FALSE,
+                             first_cancer_only = FALSE) {
   ca_ind <- tables$ca_ind
   img <- tables$img
   path <- tables$path
@@ -49,7 +53,7 @@ add_dmets_ca_ind <- function(tables, cohort_ca_types,
     scan_first, path_first, dx_first, ca_ind
   )
 
-  dmets_final <- add_overall_dmets_vars(dmets_combined, ca_ind)
+  dmets_final <- add_overall_dmets_vars(dmets_combined, ca_ind, first_cancer_only)
 
   tables$ca_ind <- ca_ind |>
     dplyr::left_join(dmets_final, by = c("record_id", "ca_seq"))

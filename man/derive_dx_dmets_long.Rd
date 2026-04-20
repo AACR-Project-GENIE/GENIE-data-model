@@ -4,13 +4,16 @@
 \alias{derive_dx_dmets_long}
 \title{Identify distant metastases at diagnosis for Stage IV patients}
 \usage{
-derive_dx_dmets_long(ca_ind)
+derive_dx_dmets_long(ca_ind, include_indeterminate = FALSE)
 }
 \arguments{
 \item{ca_ind}{Index cancer subset of the cancer diagnosis form with mapped
 \verb{ca_first_dmets*} columns (after \code{\link[=build_dv_tab_ca_dx]{build_dv_tab_ca_dx()}} has been
 applied). Must contain \code{record_id}, \code{ca_seq}, \code{ca_cadx_int}, \code{stage_dx},
 \code{ca_dmets_yn}, and \verb{ca_first_dmets*} columns.}
+
+\item{include_indeterminate}{If \code{TRUE}, include sites with \code{NA}
+classification (Indeterminate) alongside Distant. Default \code{FALSE}.}
 }
 \value{
 A long data frame with potentially multiple rows per

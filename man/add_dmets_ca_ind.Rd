@@ -4,7 +4,13 @@
 \alias{add_dmets_ca_ind}
 \title{Derive all distant metastasis variables and attach to index cancer}
 \usage{
-add_dmets_ca_ind(tables, cohort_ca_types, only_full_dmet_scans = FALSE)
+add_dmets_ca_ind(
+  tables,
+  cohort_ca_types,
+  only_full_dmet_scans = FALSE,
+  include_indeterminate = FALSE,
+  first_cancer_only = FALSE
+)
 }
 \arguments{
 \item{tables}{A named list of derived data frames, expected to contain
@@ -18,6 +24,14 @@ correspond to the cohort's cancer type (e.g.
 every site is classified as Distant (via \code{\link[=derive_scan_dmets_long_2]{derive_scan_dmets_long_2()}}).
 If \code{FALSE} (default), include all scans with any Distant site (via
 \code{\link[=derive_scan_dmets_long]{derive_scan_dmets_long()}}).}
+
+\item{include_indeterminate}{If \code{TRUE}, include sites with \code{NA}
+classification (Indeterminate) alongside Distant in all three streams.
+Default \code{FALSE}.}
+
+\item{first_cancer_only}{If \code{TRUE}, only populate \code{dmets_stage_i_iii}
+and \code{dx_to_dmets_days} for the patient's first index cancer (lowest
+\code{ca_seq}). Default \code{FALSE}.}
 }
 \value{
 The \code{tables} list with \code{ca_ind} updated to include \verb{dmets_*},

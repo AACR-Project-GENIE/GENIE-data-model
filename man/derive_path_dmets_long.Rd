@@ -4,7 +4,12 @@
 \alias{derive_path_dmets_long}
 \title{Identify distant metastases from pathology reports}
 \usage{
-derive_path_dmets_long(path, ca_ind, cohort_ca_types)
+derive_path_dmets_long(
+  path,
+  ca_ind,
+  cohort_ca_types,
+  include_indeterminate = FALSE
+)
 }
 \arguments{
 \item{path}{Pathology data with mapped columns (after \code{\link[=build_dv_tab_path]{build_dv_tab_path()}}
@@ -17,6 +22,9 @@ has been applied). Must contain \verb{path_ca*}, \verb{path_ca_type*}, and
 \item{cohort_ca_types}{Character vector of \code{path_ca_type} values that
 correspond to the cohort's cancer type (e.g.
 \code{c("Non Small Cell Lung Cancer", "Lung Cancer, NOS")} for NSCLC).}
+
+\item{include_indeterminate}{If \code{TRUE}, include sites with \code{NA}
+classification (Indeterminate) alongside Distant. Default \code{FALSE}.}
 }
 \value{
 A long data frame with potentially multiple rows per

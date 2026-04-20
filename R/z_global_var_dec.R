@@ -162,6 +162,7 @@ utils::globalVariables(
     "tt_dmets",
     "dx_to_dmets_days",
     "dmets_any",
-    "dmets_stage_i_iii"
+    "dmets_stage_i_iii",
+    "is_first_ca"
   )
 )

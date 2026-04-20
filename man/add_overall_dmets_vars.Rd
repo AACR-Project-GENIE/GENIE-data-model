@@ -4,13 +4,17 @@
 \alias{add_overall_dmets_vars}
 \title{Add Stage I-III distant metastasis flag and overall timing}
 \usage{
-add_overall_dmets_vars(dmets_combined, ca_ind)
+add_overall_dmets_vars(dmets_combined, ca_ind, first_cancer_only = FALSE)
 }
 \arguments{
 \item{dmets_combined}{Output of \code{\link[=combine_dmets_derivations]{combine_dmets_derivations()}}.}
 
 \item{ca_ind}{Index cancer data frame containing \code{record_id}, \code{ca_seq},
 and \code{stage_dx}.}
+
+\item{first_cancer_only}{If \code{TRUE}, only populate \code{dmets_stage_i_iii}
+and \code{dx_to_dmets_days} for the patient's first index cancer (lowest
+\code{ca_seq}). Default \code{FALSE}.}
 }
 \value{
 \code{dmets_combined} with two additional columns:
