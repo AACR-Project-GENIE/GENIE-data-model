@@ -58,7 +58,8 @@ derive_scan_dmets_long <- function(img, ca_ind, include_indeterminate = FALSE) {
       by = c("casite_label" = "icdo3_site")
     ) |>
     dplyr::filter(
-      classification == "Distant" | (include_indeterminate & is.na(classification))
+      classification == "Distant" |
+        (include_indeterminate & is.na(classification))
     )
 
   ca_ind |>

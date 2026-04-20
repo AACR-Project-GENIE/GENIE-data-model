@@ -27,8 +27,12 @@
 #'
 #' @examples
 #' # derive_path_dmets_long(path, ca_ind, c("Non Small Cell Lung Cancer", "Lung Cancer, NOS"))
-derive_path_dmets_long <- function(path, ca_ind, cohort_ca_types,
-                                   include_indeterminate = FALSE) {
+derive_path_dmets_long <- function(
+  path,
+  ca_ind,
+  cohort_ca_types,
+  include_indeterminate = FALSE
+) {
   met_groups <- load_nsclc_met_site_groups()
 
   join_cols <- c(
@@ -94,7 +98,8 @@ derive_path_dmets_long <- function(path, ca_ind, cohort_ca_types,
       by = c("path_site_label" = "icdo3_site")
     ) |>
     dplyr::filter(
-      classification == "Distant" | (include_indeterminate & is.na(classification))
+      classification == "Distant" |
+        (include_indeterminate & is.na(classification))
     )
 
   path_mets <- ca_ind |>

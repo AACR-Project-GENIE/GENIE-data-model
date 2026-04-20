@@ -47,7 +47,8 @@ derive_dx_dmets_long <- function(ca_ind, include_indeterminate = FALSE) {
       by = c("dmets_label" = "icdo3_site")
     ) |>
     dplyr::filter(
-      classification == "Distant" | (include_indeterminate & is.na(classification))
+      classification == "Distant" |
+        (include_indeterminate & is.na(classification))
     )
 
   ca_ind |>

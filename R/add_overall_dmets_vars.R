@@ -18,8 +18,11 @@
 #'
 #' @examples
 #' # add_overall_dmets_vars(dmets_combined, ca_ind)
-add_overall_dmets_vars <- function(dmets_combined, ca_ind,
-                                   first_cancer_only = FALSE) {
+add_overall_dmets_vars <- function(
+  dmets_combined,
+  ca_ind,
+  first_cancer_only = FALSE
+) {
   stages_i_iii <- c(
     "Stage 0",
     "Stage I",
@@ -65,7 +68,10 @@ add_overall_dmets_vars <- function(dmets_combined, ca_ind,
       ),
       dx_to_dmets_days = dplyr::case_when(
         is_first_ca & stage_dx %in% stages_i_iii & dmets_stage_i_iii == 1L ~
-          suppressWarnings(min(dplyr::c_across(dplyr::all_of(days_cols)), na.rm = TRUE))
+          suppressWarnings(min(
+            dplyr::c_across(dplyr::all_of(days_cols)),
+            na.rm = TRUE
+          ))
       )
     ) |>
     dplyr::ungroup() |>

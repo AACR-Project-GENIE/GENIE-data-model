@@ -14,7 +14,11 @@
 #'
 #' @examples
 #' # derive_scan_dmets_long_2(img, ca_ind)
-derive_scan_dmets_long_2 <- function(img, ca_ind, include_indeterminate = FALSE) {
+derive_scan_dmets_long_2 <- function(
+  img,
+  ca_ind,
+  include_indeterminate = FALSE
+) {
   met_groups <- load_nsclc_met_site_groups()
 
   casite_cols <- grep("^image_casite[0-9]+$", names(img), value = TRUE)
@@ -50,13 +54,18 @@ derive_scan_dmets_long_2 <- function(img, ca_ind, include_indeterminate = FALSE)
       by = c("casite_label" = "icdo3_site")
     )
 
-  scan_keys <- c("record_id", "ca_seq", "redcap_repeat_instance",
-                  "image_scan_int")
+  scan_keys <- c(
+    "record_id",
+    "ca_seq",
+    "redcap_repeat_instance",
+    "image_scan_int"
+  )
 
   all_distant_scans <- scans_long |>
     dplyr::group_by(dplyr::across(dplyr::all_of(scan_keys))) |>
     dplyr::filter(all(
-      classification == "Distant" | (include_indeterminate & is.na(classification)),
+      classification == "Distant" |
+        (include_indeterminate & is.na(classification)),
       na.rm = !include_indeterminate
     )) |>
     dplyr::ungroup()
