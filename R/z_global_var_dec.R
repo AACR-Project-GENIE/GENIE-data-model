@@ -154,6 +154,12 @@ utils::globalVariables(
     "path_rep_number",
     "path_proc_type",
     "path_proc",
-    "path_proc_margins"
+    "path_proc_margins",
+    "site",
+    "presence",
+    "timing",
+    "dmets",
+    "tt_dmets",
+    "dx_to_dmets_days"
   )
 )
