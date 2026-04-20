@@ -10,9 +10,15 @@
 #' @examples
 #' head(load_nsclc_met_site_groups())
 load_nsclc_met_site_groups <- function() {
-  path <- system.file("extdata", "nsclc_met_site_groups.tsv", package = "geniedv")
+  path <- system.file(
+    "extdata",
+    "nsclc_met_site_groups.tsv",
+    package = "geniedv"
+  )
   if (!nzchar(path)) {
-    cli::cli_abort("Could not locate {.file extdata/nsclc_met_site_groups.tsv} in geniedv.")
+    cli::cli_abort(
+      "Could not locate {.file extdata/nsclc_met_site_groups.tsv} in geniedv."
+    )
   }
 
   readr::read_tsv(path, show_col_types = FALSE)

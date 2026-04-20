@@ -28,9 +28,13 @@
 #' # derive_stage_dx_nsclc_2(ca_ind_nsclc)
 derive_stage_dx_nsclc_2 <- function(dat) {
   required_cols <- c(
-    "stage_dx", "stage_dx_iv",
-    "best_ajcc_stage_cd", "ca_stage_iv", "ca_stage",
-    "ca_clin_group_stage", "ca_path_group_stage",
+    "stage_dx",
+    "stage_dx_iv",
+    "best_ajcc_stage_cd",
+    "ca_stage_iv",
+    "ca_stage",
+    "ca_clin_group_stage",
+    "ca_path_group_stage",
     "ca_tx_pre_path_stage"
   )
   missing_cols <- setdiff(required_cols, names(dat))
@@ -55,10 +59,11 @@ derive_stage_dx_nsclc_2 <- function(dat) {
       .elig_specific_stage = dplyr::case_when(
         is.na(stage_dx) &
           (best_ajcc_stage_cd %in% ajcc_missing | is.na(best_ajcc_stage_cd)) &
-          (ca_stage_iv %in% c("No", "Not Applicable", "Unknown") |
+          (ca_stage_iv %in%
+            c("No", "Not Applicable", "Unknown") |
             is.na(ca_stage_iv)) &
-          (ca_stage %in% c("Not Applicable", "Unknown") |
-            is.na(ca_stage)) ~ 1
+          (ca_stage %in% c("Not Applicable", "Unknown") | is.na(ca_stage)) ~
+          1
       ),
       .ca_clin_group = dplyr::case_when(
         ca_clin_group_stage %in% stage_groups[["Stage 0"]] ~ "Stage 0",
@@ -75,16 +80,24 @@ derive_stage_dx_nsclc_2 <- function(dat) {
         ca_path_group_stage %in% stage_groups[["Stage IV"]] ~ "Stage IV"
       ),
       .filled_in_stage = dplyr::case_when(
-        .elig_specific_stage == 1 & ca_tx_pre_path_stage == "Yes" &
-          !is.na(.ca_clin_group) ~ .ca_clin_group,
-        .elig_specific_stage == 1 & ca_tx_pre_path_stage == "Yes" &
+        .elig_specific_stage == 1 &
+          ca_tx_pre_path_stage == "Yes" &
+          !is.na(.ca_clin_group) ~
+          .ca_clin_group,
+        .elig_specific_stage == 1 &
+          ca_tx_pre_path_stage == "Yes" &
           is.na(.ca_clin_group) &
-          !is.na(.ca_path_group) ~ .ca_path_group,
-        .elig_specific_stage == 1 & ca_tx_pre_path_stage == "No" &
-          !is.na(.ca_path_group) ~ .ca_path_group,
-        .elig_specific_stage == 1 & ca_tx_pre_path_stage == "No" &
+          !is.na(.ca_path_group) ~
+          .ca_path_group,
+        .elig_specific_stage == 1 &
+          ca_tx_pre_path_stage == "No" &
+          !is.na(.ca_path_group) ~
+          .ca_path_group,
+        .elig_specific_stage == 1 &
+          ca_tx_pre_path_stage == "No" &
           is.na(.ca_path_group) &
-          !is.na(.ca_clin_group) ~ .ca_clin_group
+          !is.na(.ca_clin_group) ~
+          .ca_clin_group
       ),
       stage_dx = dplyr::case_when(
         !is.na(stage_dx) ~ stage_dx,
@@ -94,7 +107,8 @@ derive_stage_dx_nsclc_2 <- function(dat) {
       ),
       stage_dx_iv = dplyr::case_when(
         stage_dx == "Stage 0" &
-          stage_dx_iv == "Stage I-III" ~ "Stage 0",
+          stage_dx_iv == "Stage I-III" ~
+          "Stage 0",
         .default = stage_dx_iv
       )
     ) |>

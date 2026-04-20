@@ -49,6 +49,8 @@ derive_path_dmets_first <- function(path_dmets_long) {
     dplyr::left_join(presence, by = c("record_id", "ca_seq")) |>
     dplyr::left_join(timing, by = c("record_id", "ca_seq")) |>
     dplyr::mutate(
-      dplyr::across(dplyr::starts_with("distant_mets_path_"), \(x) tidyr::replace_na(x, 0L))
+      dplyr::across(dplyr::starts_with("distant_mets_path_"), \(x) {
+        tidyr::replace_na(x, 0L)
+      })
     )
 }

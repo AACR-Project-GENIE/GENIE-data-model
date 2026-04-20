@@ -26,8 +26,13 @@ derive_dx_dmets_long <- function(ca_ind) {
 
   dx_long <- ca_ind |>
     dplyr::filter(stage_dx == "Stage IV", ca_dmets_yn == "Yes") |>
-    dplyr::select(record_id, ca_seq, ca_cadx_int, stage_dx,
-                  dplyr::all_of(dmets_cols)) |>
+    dplyr::select(
+      record_id,
+      ca_seq,
+      ca_cadx_int,
+      stage_dx,
+      dplyr::all_of(dmets_cols)
+    ) |>
     tidyr::pivot_longer(
       cols = dplyr::all_of(dmets_cols),
       names_to = "mets_number",

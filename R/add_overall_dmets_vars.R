@@ -16,11 +16,20 @@
 #' @examples
 #' # add_overall_dmets_vars(dmets_combined, ca_ind)
 add_overall_dmets_vars <- function(dmets_combined, ca_ind) {
-  stages_i_iii <- c("Stage 0", "Stage I", "Stage II", "Stage III",
-                     "Stage I-III NOS")
+  stages_i_iii <- c(
+    "Stage 0",
+    "Stage I",
+    "Stage II",
+    "Stage III",
+    "Stage I-III NOS"
+  )
 
   dmets_cols <- grep("^dmets_", names(dmets_combined), value = TRUE)
-  days_cols <- grep("^dx_to_dmets_.*_days$", names(dmets_combined), value = TRUE)
+  days_cols <- grep(
+    "^dx_to_dmets_.*_days$",
+    names(dmets_combined),
+    value = TRUE
+  )
 
   dmets_combined |>
     dplyr::left_join(

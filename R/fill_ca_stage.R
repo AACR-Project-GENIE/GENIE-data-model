@@ -13,7 +13,8 @@ fill_ca_stage <- function(dat) {
   dat |>
     dplyr::mutate(
       ca_stage = dplyr::if_else(
-        ca_stage_iv %in% "Yes" &
+        ca_stage_iv %in%
+          "Yes" &
           (is.na(ca_stage) | ca_stage %in% c("Not Applicable", "Unknown")),
         "IV",
         ca_stage

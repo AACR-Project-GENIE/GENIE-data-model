@@ -28,19 +28,25 @@
 derive_path_dmets_long <- function(path, ca_ind, cohort_ca_types) {
   met_groups <- load_nsclc_met_site_groups()
 
-  join_cols <- c("record_id", "redcap_repeat_instance",
-                 "path_proc_number", "path_proc_int",
-                 "path_rep_number")
+  join_cols <- c(
+    "record_id",
+    "redcap_repeat_instance",
+    "path_proc_number",
+    "path_proc_int",
+    "path_rep_number"
+  )
 
   ca_type_cols <- grep("^path_ca_type[0-9]+$", names(path), value = TRUE)
   ca_flag_cols <- grep("^path_ca[0-9]+$", names(path), value = TRUE)
   site_cols <- grep("^path_site[0-9]+$", names(path), value = TRUE)
 
   path_sub <- path |>
-    dplyr::select(dplyr::all_of(join_cols),
-                  dplyr::all_of(ca_type_cols),
-                  dplyr::all_of(ca_flag_cols),
-                  dplyr::all_of(site_cols))
+    dplyr::select(
+      dplyr::all_of(join_cols),
+      dplyr::all_of(ca_type_cols),
+      dplyr::all_of(ca_flag_cols),
+      dplyr::all_of(site_cols)
+    )
 
   spec_site <- path_sub |>
     tidyr::pivot_longer(

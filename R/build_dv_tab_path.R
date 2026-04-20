@@ -37,7 +37,10 @@ build_dv_tab_path <- function(
 
   path_insitu_cols <- grep("^path_insitu[0-9]+$", names(rtn), value = TRUE)
   rtn <- rtn |>
-    dplyr::mutate(dplyr::across(dplyr::all_of(path_insitu_cols), map_path_insitu))
+    dplyr::mutate(dplyr::across(
+      dplyr::all_of(path_insitu_cols),
+      map_path_insitu
+    ))
 
   rtn <- derive_path_insitu_any(rtn)
 
@@ -47,7 +50,10 @@ build_dv_tab_path <- function(
 
   path_ca_type_cols <- grep("^path_ca_type[0-9]+$", names(rtn), value = TRUE)
   rtn <- rtn |>
-    dplyr::mutate(dplyr::across(dplyr::all_of(path_ca_type_cols), map_path_ca_type))
+    dplyr::mutate(dplyr::across(
+      dplyr::all_of(path_ca_type_cols),
+      map_path_ca_type
+    ))
 
   return(rtn)
 }

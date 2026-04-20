@@ -14,7 +14,9 @@
 load_drug_name_map <- function() {
   path <- system.file("extdata", "drug_names.txt", package = "geniedv")
   if (!nzchar(path)) {
-    cli::cli_abort("Could not locate {.file extdata/drug_names.txt} in geniedv.")
+    cli::cli_abort(
+      "Could not locate {.file extdata/drug_names.txt} in geniedv."
+    )
   }
 
   lines <- readr::read_lines(path)
