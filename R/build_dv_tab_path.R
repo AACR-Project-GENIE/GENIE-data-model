@@ -45,5 +45,9 @@ build_dv_tab_path <- function(
   rtn <- rtn |>
     dplyr::mutate(dplyr::across(dplyr::all_of(path_ca_cols), map_path_ca))
 
+  path_ca_type_cols <- grep("^path_ca_type[0-9]+$", names(rtn), value = TRUE)
+  rtn <- rtn |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(path_ca_type_cols), map_path_ca_type))
+
   return(rtn)
 }
