@@ -140,6 +140,7 @@ utils::globalVariables(
     "classification",
     "mets_site_group",
     "numeric_code",
+    "mets_in_group",
     "path_proc_int",
     "path_proc_number",
     "path_rep_number",

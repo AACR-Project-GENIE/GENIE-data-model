@@ -4,27 +4,29 @@
 \alias{derive_scan_dmets_long}
 \title{Identify distant metastases from imaging scans}
 \usage{
-derive_scan_dmets_long(img, ca_dx)
+derive_scan_dmets_long(img, ca_ind)
 }
 \arguments{
-\item{img}{Raw imaging data with \verb{image_casite*} columns (before
-\code{\link[=map_image_casite]{map_image_casite()}} has been applied).}
+\item{img}{Imaging data with mapped \verb{image_casite*} columns (after
+\code{\link[=build_dv_tab_img]{build_dv_tab_img()}} has been applied).}
 
-\item{ca_dx}{Index cancer diagnoses. Must contain \code{record_id}, \code{ca_seq},
-\code{ca_cadx_int}, and \code{stage_dx}.}
+\item{ca_ind}{Index cancer subset of the cancer diagnosis form. Must contain
+\code{record_id}, \code{ca_seq}, \code{ca_cadx_int}, and \code{stage_dx}.}
 }
 \value{
-A long data frame with one row per patient-cancer-site observation,
-including columns \code{mets_site_group}, \code{classification}, and
-\code{image_scan_int}.
+A long data frame with potentially multiple rows per
+patient-cancer-site group, including columns \code{mets_site_group},
+\code{classification}, and \code{image_scan_int}.
 }
 \description{
 Filters to post-diagnosis scans indicating cancer, pivots \verb{image_casite*}
-columns long, classifies each site using \code{\link[=load_nsclc_met_site_groups]{load_nsclc_met_site_groups()}},
-and keeps only distant metastases. Returns one row per scan-site
-observation, left-joined back to the index cancer so every patient gets a
-row.
+columns long, classifies each site using \code{\link[=load_nsclc_met_site_groups]{load_nsclc_met_site_groups()}}, and
+keeps only distant metastases. Left-joined back to the index cancer so every
+patient gets at least one row. A patient may have multiple rows per
+\code{mets_site_group} if distant mets at the same site were observed on different
+scans — downstream consumers should reduce to the earliest \code{image_scan_int}
+per site group as needed.
 }
 \examples{
-# derive_scan_dmets_long(img, ca_dx)
+# derive_scan_dmets_long(img, ca_ind)
 }
