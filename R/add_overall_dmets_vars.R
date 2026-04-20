@@ -37,6 +37,7 @@ add_overall_dmets_vars <- function(dmets_combined, ca_ind) {
       by = c("record_id", "ca_seq")
     ) |>
     dplyr::rowwise() |>
+    # suppressWarnings: all-NA rows produce Inf/-Inf, cleaned up by case_when
     dplyr::mutate(
       dmets_any = sum(dplyr::c_across(dplyr::all_of(dmets_cols)), na.rm = TRUE),
       dmets_stage_i_iii = dplyr::case_when(
@@ -45,7 +46,7 @@ add_overall_dmets_vars <- function(dmets_combined, ca_ind) {
       ),
       dx_to_dmets_days = dplyr::case_when(
         stage_dx %in% stages_i_iii & dmets_stage_i_iii == 1L ~
-          min(dplyr::c_across(dplyr::all_of(days_cols)), na.rm = TRUE)
+          suppressWarnings(min(dplyr::c_across(dplyr::all_of(days_cols)), na.rm = TRUE))
       )
     ) |>
     dplyr::ungroup() |>
