@@ -125,6 +125,7 @@ utils::globalVariables(
     "cpt_number",
     "dx_cpt_rep_days",
     "ca_clin_group_stage",
+    "ca_lung_cigarette",
     "ca_dmets_yn",
     "image_scan_int",
     "scan_number",

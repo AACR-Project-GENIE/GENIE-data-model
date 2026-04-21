@@ -102,6 +102,13 @@ build_dv_tab_ca_dx <- function(
       )
   }
 
+  if ("ca_lung_cigarette" %in% names(rtn)) {
+    rtn <- rtn |>
+      dplyr::mutate(
+        ca_lung_cigarette = map_ca_lung_cigarette(ca_lung_cigarette)
+      )
+  }
+
   rtn <- add_mos_yrs_intervals(rtn) # anything ending in days.
 
   if (length(cast_to_double) > 0) {
