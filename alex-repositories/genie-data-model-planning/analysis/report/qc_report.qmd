@@ -1,0 +1,25 @@
+---
+title: "QC report (example)"
+format: html
+---
+
+```{r}
+
+library(purrr)
+library(here)
+library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source)
+
+qc_dat <- readr::read_rds(
+  here('data', 'qc', 'DFCI', 'qc_dat.rds')
+)
+```
+
+## Introduction
+
+This report will be for high level overview of the quality control checks.
+
+```{r}
+qc_dat %>%
+  select(qc_layer, dat_name, all_passed)
+```

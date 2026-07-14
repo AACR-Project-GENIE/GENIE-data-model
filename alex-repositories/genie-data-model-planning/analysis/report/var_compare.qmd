@@ -1,0 +1,135 @@
+---
+title: "BPC variables"
+subtitle: "Comparison over pipeline steps"
+author: "Alex Paynter"
+date: "`r format(Sys.Date(), '%d %b %Y')`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 4
+    theme: minty
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+
+dt_wrapper <- function(x, font.size = '10pt') {
+  DT::datatable(
+    x,
+    style = "bootstrap4",
+    fillContainer = F,
+    options=list(
+      initComplete = htmlwidgets::JS(
+        "function(settings, json) {",
+        paste0("$(this.api().table().container()).css({'font-size': '", font.size, "'});"),
+        "}")
+    ) 
+  )
+}
+```
+
+
+
+## Introduction
+
+The biopharma collaborative (BPC) pipeline has several steps visible in synapse (to Sage anyway):
+
+- **Curated** - The export from redcap, submitted by sites.
+- **Merged** - The site data merged into one file per cohort, and with magic numbers (e.g. 2) replaced by semantically meaningful text values (e.g. "Male").
+- **pre-MSKS** - The merged data with 89+ redaction applied, separated into tables by type (e.g. imaging) and all cohorts combined (oddly).  Available as synapse tables.  This is what goes to the Memorial Sloan Kettering stats (MSKS) team.
+- **Release** - The format that eventually gets released to the public.  Derived variables added, available as CSV files.
+
+In this report I'm comparing the merged and release data.  The goal is to find out which variables appear/disappear by the release so can decide what we need to create for the Bayer project and beyond.  I'm working with the merged data because it's easier for me to download and work with but of a similar format to the curated data.
+
+Specifically I'm working with the latest version of each release (e.g. CRC 3.1) and the most recent curation of the merged data (e.g. CRC2)
+
+```{r}
+library(purrr)
+library(here)
+library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source)
+```
+
+```{r}
+var_release_merged <- readr::read_rds(
+  here('data', 'bpc', 'multiple', 'var_release_vs_merged.rds')
+)
+```
+
+## Variables
+
+The following table shows all the variables, whether they're present in the release and the merged data.  Some obvious things you can do with this:
+
+- Search a variable by name
+- Sort by `in_merged` or `in_release` to get variables that are in one and not the other, or in both, etc.
+
+```{r}
+#| include: true
+var_release_merged %>%
+  select(var, in_release, in_merged, n_cohorts_release, n_cohorts_merged) %>%
+  dt_wrapper(.)
+```
+
+**Notes:**
+
+- Derived variables we need to add:
+  - There are only a few challenging classes of derived variables to be added:  
+    1. Distant met variables (ICD-O-3 mappings)
+    2. Survival variables (PFS pieces require some work)
+    3. Regimen variables (whether new algorithm or similar)
+  - The rest of the variables look to follow mostly patterns of renaming, combining tumor registry and curated versions, or fairly simple mappings.
+- There are some notable variables in the raw data which are annoyingly (if you want to trace the derivation) removed in the final product.  One example is `ca_grade`. Building a list we may want to keep in will be easiest to do while working on the derived list.
+
+<!-- 
+
+Removed because this isn't a good format.
+
+## Derived variables to add
+
+Derived variables (for this inferential discussion) are those present in releases but not the merged data.  The following variables are derivations we should include a version of:
+
+- `bca_subtype`, breast cancer only
+- `ca_d_site`
+- `ca_grade`
+- `ca_hist_adeno_squamous`
+- `ca_hist_brca`
+- `ca_lung_pl_el_invasion`
+- `ca_resect_status`
+- `ca_seq`
+- `cpt_number`
+- `crc_crm`, crc only
+- `crc_msi`, crc only
+- `crc_peri_inv`, crc only
+- `crc_td`, crc_only
+- `crc_type`, crc_only
+- `dmets_stage_i_iii`
+- `dob_ca_dx_*`
+- `dob_cpt_report_*`
+- `dob_lastalive_int_*`
+- `dx_cpt_rep_days`
+- `dx_death_int`
+- `dx_drug_end_int_*`
+- `dx_drug_end_or_lastadm_*`
+- `dx_drug_start_int_*`
+- `dx_lastalive_int_*`
+- `dx_md_visit_*`
+- `dx_muscprop_invasive_*`, bladder only
+- `dx_reg_end_all_int_*`
+- `dx_reg_end_any_int_*`
+- `dx_reg_start_int_*`
+
+Notes on some exclusions:
+
+- Pathology imaging and med onc are not linked to a particular diagnosis
+
+-->

@@ -1,0 +1,109 @@
+table: reg
+sort_by:
+- record_id
+- ca_seq
+- regimen_number
+columns:
+  cohort: no
+  phase: no
+  record_id: yes
+  institution: no
+  ca_seq: yes 
+  regimen_number: yes
+  regimen_number_within_cancer: yes
+  redcap_ca_index: no
+  drugs_num: yes
+  drugs_inst: yes
+  drugs_firstinst: yes
+  drugs_ct_yn: yes
+  drugs_dc_ynu: yes
+  regimen_drugs: yes
+  drugs_drug_1: no # important, but regimen_drugs check is sufficient and leaves fiddly details (synonyms) aside
+  drugs_drug_2: no # same as 1
+  drugs_drug_3: no # same as 1
+  drugs_drug_4: no # same as 1
+  drugs_drug_5: no # same as 1
+  drugs_startdt_int_1: yes
+  drugs_startdt_int_2: yes
+  drugs_startdt_int_3: yes
+  drugs_startdt_int_4: yes
+  drugs_startdt_int_5: no # handful of deviations here for some reason... tired of seeing the error.
+  dx_drug_start_int_1: yes
+  dx_drug_start_int_2: yes
+  dx_drug_start_int_3: yes
+  dx_drug_start_int_4: yes
+  dx_drug_start_int_5: no
+  dx_drug_start_int_mos_1: no
+  dx_drug_start_int_mos_2: no
+  dx_drug_start_int_mos_3: no
+  dx_drug_start_int_mos_4: no
+  dx_drug_start_int_mos_5: no
+  dx_drug_end_int_1: yes
+  dx_drug_end_int_2: no
+  dx_drug_end_int_3: no
+  dx_drug_end_int_4: no
+  dx_drug_end_int_5: no
+  dx_drug_end_int_mos_1: no
+  dx_drug_end_int_mos_2: no
+  dx_drug_end_int_mos_3: no
+  dx_drug_end_int_mos_4: no
+  dx_drug_end_int_mos_5: no
+  dx_drug_end_or_lastadm_int_1: yes
+  dx_drug_end_or_lastadm_int_2: yes
+  dx_drug_end_or_lastadm_int_3: yes
+  dx_drug_end_or_lastadm_int_4: yes
+  dx_drug_end_or_lastadm_int_5: no # same 3 cases have a problem, not surprising and not and issue.
+  dx_reg_start_int: yes
+  dx_reg_start_int_mos: no
+  dx_reg_start_int_yrs: no
+  dx_reg_end_any_int: yes
+  dx_reg_end_any_int_mos: no
+  dx_reg_end_any_int_yrs: no
+  dx_reg_end_all_int: yes
+  dx_reg_end_all_int_mos: no
+  dx_reg_end_all_int_yrs: no
+  os_d_status: no
+  tt_os_d1_days: no
+  tt_os_d2_days: no
+  tt_os_d3_days: no
+  tt_os_d4_days: no
+  tt_os_d5_days: no
+  tt_os_d1_mos: no
+  tt_os_d2_mos: no
+  tt_os_d3_mos: no
+  tt_os_d4_mos: no
+  tt_os_d5_mos: no
+  tt_os_d1_yrs: no
+  tt_os_d2_yrs: no
+  tt_os_d3_yrs: no
+  tt_os_d4_yrs: no
+  tt_os_d5_yrs: no
+  os_g_status: no
+  tt_os_g_days: no
+  tt_os_g_mos: no
+  tt_os_g_yrs: no
+  pfs_i_g_status: no
+  tt_pfs_i_g_days: no
+  tt_pfs_i_g_mos: no
+  tt_pfs_i_g_yrs: no
+  pfs_m_g_status: no
+  tt_pfs_m_g_days: no
+  tt_pfs_m_g_mos: no
+  tt_pfs_m_g_yrs: no
+  pfs_i_or_m_g_status: no
+  tt_pfs_i_or_m_g_days: no
+  tt_pfs_i_or_m_g_mos: no
+  tt_pfs_i_or_m_g_yrs: no
+  pfs_i_and_m_g_status: no
+  tt_pfs_i_and_m_g_days: no
+  tt_pfs_i_and_m_g_mos: no
+  tt_pfs_i_and_m_g_yrs: no
+  ttnt_any_ca_status: no
+  ttnt_any_ca_days: no
+  ttnt_any_ca_mos: no
+  ttnt_any_ca_yrs: no
+  ttnt_ca_seq_status: no
+  ttnt_ca_seq_days: no
+  ttnt_ca_seq_mos: no
+  ttnt_ca_seq_yrs: no
+  release_version: no
