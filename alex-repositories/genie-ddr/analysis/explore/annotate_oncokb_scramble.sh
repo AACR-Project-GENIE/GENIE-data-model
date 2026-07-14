@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# input and output maf files
+IMAF="/analysis/explore/mut_test_ready_to_annotate.txt"
+OMAF="/analysis/explore/mut_test_onco.txt"
+
+# The input CNA file is shaped and filtered from the raw input.
+
+# Three environment variables needed:
+# PROJ_ROOT - the location of the R project file.
+# ONCO_ANNO_LOC - the location of the oncoKB annotator scripts.
+# ONCOKB_KEY - the API key for oncoKB.
+
+# For all of these you can check that it exists with echo ${ONCOKB_KEY}
+# if not...
+# set with commands like "export ONCOKB_KEY=''"
+
+# It worked best for me to use the full path e.g. "/Users/.../oncokb-annotator"
+
+# OncoKB annotator is a program available from a github repo:
+# https://github.com/oncokb/oncokb-annotator
+# Clone this to a directory of your choosing and reference it with ONCO_ANNO_LOC above.
+# The location you refer to should contain MafAnnotator.py (for example).
+python ${ONCO_ANNO_LOC}/MafAnnotator.py -i "${PROJ_ROOT}${IMAF}" -o "${PROJ_ROOT}${OMAF}" -b ${ONCOKB_KEY} -r GRCh37 
