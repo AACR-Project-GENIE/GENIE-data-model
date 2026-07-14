@@ -1,0 +1,16 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+/2023-05-09-wu_paynter_prca_rfa/data
+.quarto/
+*.csv
+*.html
+*.rds
+*.txt 
+*.seg
+*.xlsx
+*.pdf
+
+*.DS_Store

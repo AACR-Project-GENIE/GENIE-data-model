@@ -1,0 +1,314 @@
+---
+title: "Side Query - primary and met samples"
+subtitle: "EGFR mutation accumulation in GENIE"
+author: "Alex Paynter"
+date: "`r Sys.Date()`"
+output:
+  quarto::quarto_html:
+editor_options:
+  quarto:
+  chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+library(purrr); library(here); library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source) # also loads lots of packages.
+```
+
+```{r}
+dft_rel <- readr::read_rds(
+    here('data', 'release_sum_nested_all_mut_primary_and_met.rds')
+)
+```
+
+
+```{r}
+# We didn't filter the mutations at all, have to do it now.
+mut_prot_symbols <- c("729_761del",
+    "G719.*",
+    "L858R",
+    "L861Q",
+    "S768I",
+    "T790M",
+    "A763_Y764insFQEA")
+
+mut_regex <- paste(paste0("^p.", mut_prot_symbols, "$"), collapse = "|")
+
+filter_muts <- function(dat) {
+    dat %>%
+        mutate(
+            alt_desc = case_when(
+                exon_number %in% "19/28" & consequence %in% "inframe_deletion" ~ "Exon 19 inframe del",
+                str_detect(hgvsp_short, "p.G719") ~ "p.G719Xaa",
+                str_detect(hgvsp_short, mut_regex) ~ hgvsp_short,
+                T ~ NA_character_
+            )
+        ) %>%
+        filter(!is.na(alt_desc))
+}
+
+# filter_muts((dft_rel %>% slice(1) %>% pull(release_sum) %>% `[[`(.,1)))
+            
+
+dft_rel %<>%
+    mutate(
+        release_sum = purrr::map(
+            .x = release_sum,
+            .f = filter_muts
+        )
+    )
+            
+```
+
+## Request
+
+Count the number of people who have a non-small cell lung cancer sample which has an EGFR mutation in the following list:
+
+- 729_761del **Major update is here - this is now fixed**
+- G719Xaa (Xaa = anything, like A or C or T)
+- L858R
+- L861Q
+- S768I
+- T790M
+- A763_Y764insFQEA
+
+Repeat for public releases 11.1, 12.1, 13.1, 14.1, 15.1 and estimate for 16.1 public.
+
+Additionally, estimate the accrual rate by site and state which 6 sites have the highest rate of accrual.
+
+
+
+
+
+```{r}
+
+dft_rel %<>%
+    # hacky but fine for this:
+    mutate(
+        seq_cutoff = as.numeric(str_sub(minor, end = 2)) - 11,
+        seq_cutoff = ymd(paste0(
+            (2021 + floor(seq_cutoff/2)), "-0",
+            (1 + 6 * seq_cutoff %% 2),
+            "-01"
+        ))
+    ) %>%
+    mutate(
+        rel_date = time_length(seq_cutoff - ymd('2021-01-01'), unit = "year")
+    )
+
+sum_help <- function(dat) {
+    dat %>%
+        summarize(
+            n_pt = length(unique(patient_id)),
+            n_samp = length(unique(sample_id))
+        )
+}
+
+dft_rel %>%
+    mutate(
+        sum = purrr::map(
+            .x = release_sum,
+            .f = \(d) {
+                d %>% sum_help
+            }
+        )
+    ) %>%
+    select(minor, seq_cutoff, rel_date, sum) %>%
+    unnest(sum) %>%
+    arrange(rel_date)
+# Ok, basically no loss for consortium so I'll just take the 16.4 numbers as is.
+
+dft_rel %<>%
+    mutate(minor = if_else(
+        minor %in% '16.6-consortium',
+        '16.1-public-proj',
+        minor
+    )) %>%
+    filter(str_detect(minor, 'public'))
+        
+dft_site <- dft_rel %>%
+    mutate(
+        inst_sum = purrr::map(
+            .x = release_sum,
+            .f = \(d) {
+                d %>% group_by(institution) %>% sum_help
+            }
+        )
+    ) %>%
+    select(minor, seq_cutoff, rel_date, inst_sum) %>%
+    unnest(inst_sum) %>%
+    arrange(institution, minor)
+
+    
+```
+
+
+## Results 
+
+The following figure shows the number of patients for each release:
+
+```{r}
+slope_f <- function(x,y) {
+    dat <- tibble(n_pt = x, rel_date = y)
+    slope <- lm(dat) %>% broom::tidy(.) %>% filter(term %in% 'rel_date') %>%
+        pull(estimate)
+    
+    return(slope)
+}
+
+dft_site_sum <- dft_site %>%
+    group_by(institution) %>%
+    summarize(
+        cases_per_year = slope_f(n_pt, rel_date),
+        most_recent_cases = last(n_pt)
+    ) %>% 
+    arrange(desc(cases_per_year))
+# Text output for email:
+dft_site_sum %>%
+    arrange(desc(cases_per_year)) %>%
+    mutate(output_str = paste0(institution, " (", round(cases_per_year), " per year, ",
+                               most_recent_cases, " expected in 16.1-public)"))%>%
+    pull(output_str) %>%
+    cat(., sep = "\n")
+
+
+
+
+gg <- dft_site %>%
+    mutate(institution = factor(institution, levels = dft_site_sum$institution)) %>%
+    ggplot(
+        data = .,
+        aes(x = seq_cutoff, y = n_pt),
+    ) + 
+    geom_smooth(method = 'lm', se = F, color = "orange", alpha = 0.7) +
+    geom_point() + 
+    facet_wrap(vars(institution), ncol = 6) +
+    theme_bw() +
+    labs(x = "Sequencing cutoff for release",
+         y = "Number of patients",
+         title = "Patients with EGFR activating mNSCLC samples",
+         subtitle = "Releases 11.1-public through projections for 16 public"
+    ) + 
+    theme(
+        plot.title.position = 'plot'
+    )
+
+
+```
+
+```{r}
+#| include: true
+#| fig-height: 6
+gg
+```
+
+Text summary, where `cases_per_year` is a simple linear regression slope using 11.1 through our expectation for 16.1:
+
+```{r}
+#| include: true
+dft_site_sum %>%
+    mutate(cases_per_year = round(cases_per_year, 1)) %>%
+    rename(`16 release (expected)` = most_recent_cases) %>%
+    flextable::flextable(.) %>%
+    flextable::autofit(.)
+```
+
+
+```{r}
+        
+dft_mut_sum <- dft_rel %>%
+    mutate(
+        sum = purrr::map(
+            .x = release_sum,
+            .f = \(d) {
+                d %>% 
+                    group_by(alt_desc) %>% 
+                    sum_help
+            }
+        )
+    ) %>%
+    select(minor, seq_cutoff, rel_date, sum) %>%
+    unnest(sum) 
+
+dft_req_table <- dft_mut_sum %>%
+    select(minor, alt_desc, n_pt) %>%
+    tidyr::complete(minor, alt_desc, fill = list(n_pt = 0)) %>%
+    pivot_wider(
+        names_from = minor,
+        values_from = n_pt
+    ) %>%
+    arrange(alt_desc)
+```
+
+
+Breakdown of mutations by release, as in the original request table.  These numbers still show patients rather than samples.  
+
+```{r}
+#| include: true
+dft_req_table %>%
+    flextable(.) %>%
+    autofit(.)
+```
+
+
+```{r}
+dft_mut_sum_vicc <- dft_rel %>%
+    mutate(
+        sum = purrr::map(
+            .x = release_sum,
+            .f = \(d) {
+                d %>% 
+                    filter(institution %in% "VICC") %>%
+                    group_by(alt_desc) %>% 
+                    sum_help
+            }
+        )
+    ) %>%
+    select(minor, seq_cutoff, rel_date, sum) %>%
+    unnest(sum) 
+
+
+dft_req_table_vicc <- dft_mut_sum_vicc %>%
+    select(minor, alt_desc, n_pt) %>%
+    tidyr::complete(minor, alt_desc, fill = list(n_pt = 0)) %>%
+    pivot_wider(
+        names_from = minor,
+        values_from = n_pt
+    ) %>%
+    arrange(alt_desc)
+
+
+```
+
+
+
+
+## Details
+
+- Some of the mutations in the spreadsheet sent did not return any hits (just  A763_Y764insFQEA now).  Let me know ASAP if that sounds wrong.
+- The spreadsheet also had a note about an exclusion mutation.  That is currently not a part of this analysis.
+- Sample numbers are not shown (**patients** are shown).  They tend to differ by about 10% and can be pulled up if needed.
+
+What was up with vanderbilt?  Here's the mutation breakdown for VICC only:
+
+```{r}
+#| include: true
+dft_req_table_vicc %>%
+    flextable(.) %>%
+    autofit(.)
+```
+
+I'm getting an across-the-board decrease, which is not what I expected (I was thinking some of the common ones might be stripped out by a new germline filter or something).  Something to consider as you dig into the numbers - VICC would be in the top 6 for total mutations if you took their 14.1 data.
+

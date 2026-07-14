@@ -1,0 +1,86 @@
+---
+title: "Bayer HER2 feasibility project"
+author: "Alex Paynter"
+date: "`r format(Sys.Date(), '%d %b %Y')`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 4
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+
+```{r}
+
+library(purrr); library(here); library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source)
+
+
+attrition <- readr::read_rds(
+    here('data', 'attrition.rds')
+)
+
+attrition_center <- readr::read_rds(
+    here('data', 'attrition_center.rds')
+)
+```
+
+
+## Introduction
+
+This is an investigation into the Bayer HER2 project and attrition we would expect with each exclusion criterion.  Information we've firmed up with the sponsor at this point:
+
+- "Activating mutations" is a list of short protein codes for ERBB2 mutations provided by the company.
+- Stage:  We agreed to include two groups of people:  Those diagnosed at stage 3B or higher, and those who develop a metastasis at any time (even if diagnosed at say, stage 2).  Those diagnosed at 3B tend to develop mets, but the "ever metastatic" group contains many people diagnosed at an early stage.
+
+There are rows below this in the table for additional criteria we thought may be helpful, but may not be that easy to screen for without doing a full curation.  These are nested versions of a restriction based on the types of cancers the person should have.
+
+## Methods
+
+We used a different method here than we have previously.  Appreciating that sites sometimes have different patient populations, each forecast is based on a site-specific proportion in BPC for DFCI and MSK (it's the marginal rate for everyone else).  For example, at the stage-based step, we select a proportion of people from DFCI mirroring the DFCI BPC rate, same for MSK, etc.
+
+In practice lung cancer appears to be more similar between sites than I expected, so this doesn't make a big difference.
+
+This method also selects actual people at each step, so there is some potential for rounding error with projects that have tons of steps or tiny sample sizes, and there is some stochasticity in site numbers outside of DFCI and MSK.  The next iteration of this idea is quantifying the variability by resampling and doing actual binary draws rather than keeping a proportion. 
+
+## Results
+
+The following table shows the number we have in BPC (`n_bpc`), main GENIE total, which includes BPC (`n_main`).  A subtraction gives us the number available to curate, or in other words the maximum budget number if we want to avoid double-charging (`n_curate`).  Gray numbers are estimated, black numbers are counted.
+
+
+```{r}
+#| include: true
+attrition %>%
+    flextable(.) %>%
+    autofit(.) %>%
+    color(j = 3:4, i = 4:7, color = "gray70")
+```
+
+The following sortable table breaks these down by center and site.  Two suggested ways to use this:
+
+- See the center-based table:  Put the center you want to see in the search bar.
+- See the top sites at a given step:  Put the step in the search bar.
+
+```{r}
+#| include: true
+dt_wrapper(attrition_center)
+```
+
+## Missing pieces
+
+- Sample timing - it will likely be a problem if someone hits 3B+/met and then gets NGS a long time after.  Less of a concern with the advanced stage (short survival).
+- Stage 3B - A limitation here is that we're missing the curated stage (`ca_stage`).  This can probably be re-derived from the TNM code data, which we do have.  However, for this report we just did not include these people, erring on the side of a conservative estimate.   Two reasons this makes sense:
+    1. Most of the stage 3B people develop mets eventually, so our compound condition gets them anyway.
+    2. Most people have the tumor registry version available, which is prioritized over the curated stage, so the curated stage is the determining variable for a minority.
+    

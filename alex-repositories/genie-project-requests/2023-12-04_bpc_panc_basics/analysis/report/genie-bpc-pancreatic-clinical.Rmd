@@ -1,0 +1,241 @@
+---
+title: "GENIE BPC Pancreatic"
+subtitle: "Basic descriptions of cohort and drugs"
+author: "Alex Paynter"
+date: "Dec 04 2023"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: paper
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, include = F,
+                      warning = F, message = F,
+                      fig.width = 7, fig.height = 5)
+```
+
+
+<style type="text/css">
+.main-container {
+  max-width: 1000px !important;
+  margin: auto;
+}
+</style>
+
+
+
+```{r}
+library(purrr); library(fs); library(here);
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source)
+```
+
+
+```{r, set_gtsummary_theme}
+gtsummary::theme_gtsummary_compact(font_size = 12)
+gtsummary::theme_gtsummary_language("en", big.mark = "") 
+gdtools::register_gfont('Roboto')
+set_flextable_defaults(
+  font.size = 8,
+  theme_fun = theme_booktabs,
+  font.family = 'Roboto'
+)
+
+```
+
+
+```{r, warning = T}
+read_wrap <- function(p) {
+  read_rds(
+    file = here("data", 'cohort', paste0(p, '.rds'))
+  )
+}
+
+dft_pt <- read_wrap("pt")
+dft_ca_ind <- read_wrap("ca_ind")
+dft_img <- read_wrap("img")
+dft_med_onc <- read_wrap("med_onc")
+dft_path <- read_wrap("path")
+dft_reg <- read_wrap("reg")
+# dft_tm <- read_wrap("tm_level_dataset.csv")
+dft_cpt <- read_wrap("cpt")
+dft_drug <- read_wrap("drug")
+
+n_bladder_cohort <- dft_ca_ind %>% nrow()
+```
+
+
+
+```{r, demo_data_manipulation, include = F}
+dft_pt_baseline_sub <- dft_pt %>%
+  mutate(
+    `Race (primary)` = format_ptlevel_naaccr_race_code_primary(
+      naaccr_race_code_primary
+    ),
+    `Ethnicity` = format_ptlevel_naaccr_ethnicity_code(
+      naaccr_ethnicity_code,
+    ),
+    `Sex at birth` = factor(naaccr_sex_code)
+  ) %>%
+    select(
+        record_id, 
+        Institution = institution,
+        `Race (primary)`,
+        `Ethnicity`,
+        `Sex at birth`,
+        birth_year
+    )
+
+dft_ca_ind_baseline_sub <- dft_ca_ind %>%
+    group_by(record_id) %>%
+    arrange(ca_seq) %>%
+    slice(1) %>%
+    ungroup(.) %>%
+    mutate(
+        ca_dx_how = format_ca_dx_how(ca_dx_how),
+        stage_dx = format_stage_dx(stage_dx),
+        ca_dmets_yn = format_ca_dmets_yn(ca_dmets_yn),
+        ca_path_n_stage = format_ca_path_n_stage(ca_path_n_stage)
+    ) %>%
+    select(
+        record_id,
+        `Age at dx (years)` = dob_ca_dx_yrs,
+        `Stage at dx` = stage_dx,
+        `Source of dx date` = ca_dx_how,
+        `Mets among Stage IV` = ca_dmets_yn,
+        # Update May 5:  Removed histology (unimportant)
+        # `Histology` = ca_hist_adeno_squamous, # at dx?
+        `Pathologic N Stage` = ca_path_n_stage # describes spread to lymph nodes
+    ) 
+
+# Just doing this manually for simplicity:
+lev_oncotree <- c(
+    "Pancreatic Adenocarcinoma",
+    "Acinar Cell Carcinoma of the Pancreas",
+    "Adenosquamous Carcinoma of the Pancreas",
+    "Undifferentiated Carcinoma of the Pancreas"
+)
+    
+
+dft_first_oncotree <- dft_cpt %>% 
+    select(record_id, ca_seq, cpt_oncotree_code, cpt_number) %>%
+    arrange(record_id, ca_seq, cpt_number) %>%
+    group_by(record_id) %>%
+    slice(1) %>%
+    select(-c(cpt_number, ca_seq)) %>%
+    mutate(
+        cpt_oncotree_code = case_when(
+            cpt_oncotree_code %in% "PAAD" ~ lev_oncotree[1],
+            cpt_oncotree_code %in% "PAAC" ~ lev_oncotree[2],
+            cpt_oncotree_code %in% "PAASC" ~ lev_oncotree[3],
+            cpt_oncotree_code %in% "UCP" ~ lev_oncotree[4]
+        ),
+        cpt_oncotree_code = factor(cpt_oncotree_code, levels = lev_oncotree)
+    ) %>%
+    rename(
+        `Cancer type (Oncotree)` = cpt_oncotree_code
+    ) %>%
+    ungroup(.)
+
+
+dft_demo <- full_join(
+  dft_pt_baseline_sub,
+  dft_ca_ind_baseline_sub,
+  by = "record_id"
+) %>%
+    full_join(
+        .,
+        dft_first_oncotree,
+        by = "record_id"
+    )
+
+# age_dx is not an integer in this cohort, so this should be more exact.
+dft_demo %<>% 
+  mutate(
+    `Year of birth` = birth_year,
+    `Year of diagnosis` = round(birth_year + `Age at dx (years)`)
+  ) %>%
+  select(-birth_year) %>%
+  relocate(
+      `Year of birth`, `Year of diagnosis`,
+        .before = `Age at dx (years)`) %>%
+    relocate(
+        `Cancer type (Oncotree)`, .before = Institution
+    )
+
+dft_first_oncotree <- dft_cpt %>% 
+    select(record_id, ca_seq, cpt_oncotree_code, cpt_number) %>%
+    arrange(record_id, ca_seq, cpt_number) %>%
+    group_by(record_id, ca_seq) %>%
+    slice(1) %>%
+    select(-cpt_number) %>%
+    ungroup(.)
+
+dft_demo %<>%
+    select(
+        -c(`Mets among Stage IV`, `Pathologic N Stage`)
+    )
+```
+
+
+## Content
+
+### Characteristics at dx
+
+Table of characteristics at diagnosis.  A few notes on cohort eligibility:
+
+- The cancer type is based on the OncoTree code associated with the earliest sample for each participant.  This is technically after diagnosis in many cases, so we're assuming the cancer type stays the same from diagnosis to sampling.  Detailed information about pathology and imaging is available in the full data for other characterizations of the cancer type.
+- The Oncotree codes shown in this table are also the only eligible ones.
+- Sequencing had to be between Jan 1, 2013 and Dec 31, 2018 to qualify for this cohort, with a minimum of two possible years of follow-up after sequencing at curation.
+
+```{r, tab_r1_1a, include = T}
+dft_demo %>%
+  select(-record_id) %>%
+  gtsummary::tbl_summary(
+    data = .,
+    digits = list(
+      `Year of birth` ~ 0,
+      `Year of diagnosis` ~ 0
+    )
+  ) 
+```
+
+
+
+```{r}
+n_cohort <- dft_pt %>% nrow
+
+set.seed(2383) # color sampling below.
+
+dft_top_drugs <- dft_drug %>% 
+    count(record_id, agent, sort = T) %>%
+    count(agent) %>%
+    arrange(desc(n)) %>%
+    filter(n >= 10) %>%
+    rename(drug = agent)
+        
+
+gg_top_drug <- plot_drug_prop(
+  drug_dat = dft_top_drugs,
+  cohort_n = n_cohort,
+  sample(viridisLite::magma(n = nrow(dft_top_drugs), begin = 0.2, end = 0.8)),
+  plot_title = glue("BPC Pancreatic drug exposure (n={n_cohort})")
+)
+```
+
+
+  
+### Drug exposure
+
+The following table shows the proportion of participants who were exposed to each drug at any time during followup.  Notes:  
+
+- Only regimens associated with the index cancer are considered.
+- "Investigational Drug" is a mask for any drug used as a part of a clinical trial (even an approved agent).
+
+
+```{r, output_top_drug_plot, include = T, fig.height = 4, fig.width = 7}
+gg_top_drug
+```

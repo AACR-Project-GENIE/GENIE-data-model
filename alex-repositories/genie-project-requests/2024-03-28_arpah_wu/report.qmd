@@ -1,0 +1,177 @@
+---
+title: "BPC NSCLC - immunotherapy use"
+subtitle: "Using '3.1 consortium' (Phase 1 and Phase 2 combined)"
+author: "Alex Paynter"
+date: "`r Sys.Date()`"
+output:
+  quarto::quarto_html:
+    toc: true
+    toc_float: true
+    theme:
+      name: paper
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+library(purrr); library(here); library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source) # also load
+```
+
+
+```{r}
+dft_ca_ind <- readr::read_csv(here('data-raw', "cancer_level_dataset_index.csv"),
+                           show_col_types = F)
+
+dft_ca_non_ind <- readr::read_csv(here('data-raw', "cancer_level_dataset_non_index.csv"),
+                           show_col_types = F)
+
+dft_reg <- readr::read_csv(here('data-raw', "regimen_cancer_level_dataset.csv"),
+                           show_col_types = F)
+
+dft_drug <- dft_reg %>%
+  create_drug_dat(.)
+
+dft_phase <- rbind(
+  select(dft_ca_ind, record_id, ca_seq, phase),
+  select(dft_ca_non_ind, record_id, ca_seq, phase)
+)
+
+dft_drug %<>%
+  left_join(
+    .,
+    dft_phase,
+    by = c('record_id', 'ca_seq')
+  )
+
+dft_drug_ind <- dft_ca_ind %>%
+  select(record_id, ca_seq) %>%
+  left_join(., dft_drug, by = c("record_id", "ca_seq"))
+
+
+
+
+vec_io <- c(
+  "Atezolizumab",
+  "Durvalumab",
+  # Don't see anything resembling Cemiplimab-rwlc
+  "Nivolumab",
+  "Pembrolizumab",
+  "Ipilimumab",
+  "Tremelimumab"
+)
+
+sum_help <- function(dat) {
+  dat %>%
+    summarize(
+      n_people = length(unique(record_id)),
+      n_cases = length(unique(paste0(record_id, "Q", ca_seq))),
+      .groups = "drop"
+    )
+}
+
+ft_help <- function(dat) {
+  dat %>%
+    flextable(.) %>%
+    autofit(.)
+}
+
+```
+
+## Query
+
+From Tony Wu:  Can you perform a count for the BPC NSCLC Phase 2 cohort for all patients that received an I/O drug?
+
+The list of IO drugs provided:
+
+- Anti-PD-1
+    - Atezolizumab (Tecentriq)
+    - Durvalumab (Imfinzi)
+    - Cemiplimab-rwlc (Libtayo)
+    - Nivolumab (Opdivo)
+    - Pembrolizumab (Keytruda)
+
+- Anti-CTLA4
+    - Ipilimumab (Yervoy)
+    - Tremelimumab (Imjudo)
+    
+## Analysis 
+
+The dataset analyzed is called "3.1 consortium" which I'm told is Phase 1 and 2 combined for the NSCLC cohort.  `n_people` is the number of unique record IDs with a regimen containing a drug on the list. `n_cases` is the same for the number of unique {record_id, ca_seq} pairs (i.e. someone could have a primary in the left and right lung both counted).
+
+The first set of results I state filters to index cancer cases, which I would recommend.  The results with non-index cancer cases almost certainly double-count regimens for the `n_cases` numbers because regimens are not always uniquely assigned to a cancer.  But they're there if that's what you wanted, and might be valid for `n_people`.
+
+I did not see any agents resembling "Cemiplimab-rwlc" or "Tremelimumab" in the data, so tell me if that sounds off.
+
+## Results
+
+Overall results:
+
+```{r, include = T}
+dft_drug_ind %>%
+  filter(agent %in% vec_io) %>%
+  sum_help(.) %>%
+  ft_help(.)
+```
+
+Overall results split by phase:
+
+```{r, include = T}
+dft_drug_ind %>%
+  filter(agent %in% vec_io) %>%
+  group_by(phase) %>%
+  sum_help(.) %>%
+  ft_help(.)
+```
+
+Overall results split by drug ('agent'):
+
+```{r, include = T}
+dft_drug_ind %>%
+  filter(agent %in% vec_io) %>%
+  group_by(agent) %>%
+  sum_help(.) %>%
+  ft_help(.)
+```
+
+## Results including non-index cancers
+
+Overall results including non-index cancers:
+
+```{r, include = T}
+dft_drug %>%
+  filter(agent %in% vec_io) %>%
+  sum_help(.) %>%
+  ft_help(.)
+```
+
+Overall results split by phase including non-index cancers:
+
+```{r, include = T}
+dft_drug %>%
+  filter(agent %in% vec_io) %>%
+  group_by(phase) %>%
+  sum_help(.) %>%
+  ft_help(.)
+```
+
+Overall results split by drug ('agent') including non-index cancers:
+
+```{r, include = T}
+dft_drug %>%
+  filter(agent %in% vec_io) %>%
+  group_by(agent) %>%
+  sum_help(.) %>%
+  ft_help(.)
+```

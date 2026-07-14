@@ -1,0 +1,37 @@
+names	codes
+Breast	BREAST
+Metaplastic Breast Cancer	MBC
+Adenomyoepithelioma of the Breast	BRAME
+Breast Ductal Carcinoma In Situ	DCIS
+Invasive Breast Carcinoma	BRCA
+Breast Neoplasm, NOS	BNNOS
+Inflammatory Breast Cancer	IBC
+Breast Sarcoma	PBS
+Breast Lobular Carcinoma In Situ	LCIS
+Breast Fibroepithelial Neoplasms	BFN
+Juvenile Secretory Carcinoma of the Breast	JSCB
+Adenoid Cystic Breast Cancer	ACBC
+Solid Papillary Carcinoma of the Breast	SPC
+Breast Mixed Ductal and Lobular Carcinoma	MDLC
+Breast Carcinoma with Signet Ring	BRSRCC
+Phyllodes Tumor of the Breast	PT
+Paget Disease of the Nipple	PD
+Breast Invasive Ductal Carcinoma	IDC
+Breast Invasive Carcinosarcoma, NOS	CSNOS
+Breast Angiosarcoma	BA
+Breast Invasive Carcinoma, NOS	BRCNOS
+Fibroadenoma	FA
+Breast Invasive Lobular Carcinoma	ILC
+Mixed Type Metaplastic Breast Cancer	MMBC
+Breast Invasive Mixed Mucinous Carcinoma	IMMC
+Epithelial Type Metaplastic Breast Cancer	EMBC
+Breast Invasive Cancer, NOS	BRCANOS
+Carcinoma with Osseous Metaplasia	COM
+Carcinoma with Chondroid Metaplasia	CCHM
+Borderline Phyllodes Tumor of the Breast	BLPT
+Metaplastic Adenocarcinoma with Spindle Cell Differentiation	MASCC
+Metaplastic Adenosquamous Carcinoma	MASC
+Benign Phyllodes Tumor of the Breast	BPT
+Malignant Phyllodes Tumor of the Breast	MPT
+Metaplastic Squamous Cell Carcinoma	MSCC
+Metaplastic Carcinosarcoma	MCS

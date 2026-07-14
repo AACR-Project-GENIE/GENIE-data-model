@@ -1,0 +1,137 @@
+---
+title: "Vital status INT and YEAR inconsistencies"
+author: "Haley Hunter-Zinck"
+date: "`r Sys.setenv(TZ='America/Los_Angeles'); format(Sys.time(), '%B %d, %Y at %I:%M %p %Z')`"
+output: html_document
+parameters:
+  synid_file_patient: x
+  synid_version_patient: x
+---
+
+## Overview
+
+We look for discrepancies in vital status information submitted for main GENIE consortium releases.  
+
+We check the following pairs of variables:
+
+* YEAR_CONTACT and YEAR_DEATH
+* YEAR_DEATH and INT_DOD
+* YEAR_CONTACT and INT_CONTACT
+
+for inconsistencies with any of the following rules: 
+
+1. If the YEAR_CONTACT > YEAR_DEATH
+2. If YEAR_DEATH or INT_DOD are greater than 365 days apart  
+3. If YEAR_CONTACT or INT_CONTACT are greater than 365 days apart  
+
+## Parameters
+
+Synapse ID of patient file: `r synid_file_patient`
+
+Synapse version of patient file: `r synid_version_patient`
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+
+library(synapser)
+invisible(synLogin())
+library(glue)
+library(dplyr)
+
+```
+
+```{r functions, include = F}
+#' Download and load data stored in csv or other delimited format on Synapse
+#' into an R data frame.
+#' 
+#' @param synapse_id Synapse ID
+#' @version Version of the Synapse entity to download.  NA will load current
+#' version
+#' @param set Delimiter for file
+#' @param na.strings Vector of strings to be read in as NA values
+#' @param header TRUE if the file contains a header row; FALSE otherwise.
+#' @param check_names TRUE if column names should be modified for compatibility 
+#' with R upon reading; FALSE otherwise.
+#' @return data frame
+get_synapse_entity_data_in_csv <- function(synapse_id, 
+                                           version = NA,
+                                           sep = ",", 
+                                           na.strings = c("NA"), 
+                                           header = T,
+                                           check_names = F, 
+                                           comment.char = "#") {
+  
+  if (is.na(version)) {
+    entity <- synGet(synapse_id)
+  } else {
+    entity <- synGet(synapse_id, version = version)
+  }
+  
+  data <- read.csv(entity$path, stringsAsFactors = F, 
+                   na.strings = na.strings, sep = sep, check.names = check_names,
+                   header = header, comment.char = comment.char)
+  return(data)
+}
+```
+
+```{r read, include = F}
+
+pat <- get_synapse_entity_data_in_csv(synid_file_patient, version = synid_version_patient, sep = "\t")
+
+```
+
+
+## Vital data summary
+
+Number of patients = `r nrow(pat)` 
+
+## Checks for vital INT and YEAR inconsistencies
+
+### Check 1
+
+```{r contact after death, include = F}
+df_year_invalid <- pat %>% 
+  filter(grepl(pattern = "^[0-9]{4}$", x = YEAR_CONTACT) & grepl(pattern = "^[0-9]{4}$", x = YEAR_DEATH) & YEAR_CONTACT > YEAR_DEATH) %>%
+  select(PATIENT_ID, CENTER, YEAR_CONTACT, YEAR_DEATH)
+```
+
+Number of cases with contact after death: `r nrow(df_year_invalid)`
+
+Number of cases with contact after death by center:
+```{r contact after death by center, include = T}
+print(df_year_invalid %>% group_by(CENTER) %>% count() %>% arrange(CENTER))
+```
+
+### Check 2
+
+```{r death int and year, include = F}
+df_int_death <- pat %>%
+  mutate(INT_DOD_EST = (as.double(YEAR_DEATH) - as.double(BIRTH_YEAR)) * 365) %>%
+  mutate(INT_DOD_DIFF = abs(as.double(INT_DOD) - INT_DOD_EST)) %>%
+  filter(INT_DOD_DIFF > 365) %>%
+  select(PATIENT_ID, CENTER, YEAR_DEATH, BIRTH_YEAR, INT_DOD, INT_DOD_EST, INT_DOD_DIFF)
+```
+
+Number of cases with inconsistent INT_DOD and YEAR_DEATH: `r nrow(df_int_death)`
+
+Number of cases with inconsistent INT_DOD and YEAR_DEATH by center:
+```{r death int and year by center, include = T}
+print(df_int_death %>% group_by(CENTER) %>% count() %>% arrange(CENTER))
+```
+
+### Check 3
+
+```{r contact int and year, include = F}
+df_int_contact <- pat %>%
+  mutate(INT_CONTACT_EST = (as.double(YEAR_CONTACT) - as.double(BIRTH_YEAR)) * 365) %>%
+  mutate(INT_CONTACT_DIFF = abs(as.double(INT_CONTACT) - INT_CONTACT_EST)) %>%
+  filter(INT_CONTACT_DIFF > 365) %>%
+  select(PATIENT_ID, CENTER, YEAR_CONTACT, BIRTH_YEAR, INT_CONTACT, INT_CONTACT_EST, INT_CONTACT_DIFF)
+```
+
+Number of cases with inconsistent INT_CONTACT and YEAR_CONTACT: `r nrow(df_int_contact)`
+
+Number of cases with inconsistent INT_CONTACT and YEAR_CONTACT by center:
+```{r contact int and year by center, include = T}
+print(df_int_contact %>% group_by(CENTER) %>% count() %>% arrange(CENTER))
+```

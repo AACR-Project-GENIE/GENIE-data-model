@@ -1,0 +1,231 @@
+---
+title: "WAKE sample IDs release 11.2"
+author: "Haley Hunter-Zinck"
+date: "`r Sys.setenv(TZ='America/Los_Angeles'); format(Sys.time(), '%B %d, %Y at %I:%M %p %Z')`"
+output: html_document
+params:
+  param1: ""
+  param2: ""
+---
+
+## Summary
+
+**Description**: Investigate why WAKE sample IDs in the GENIE consortium release 11.2 mutation file do not overlap with the clinical data file sample IDs.
+
+**Source of request**:
+
+- medium: slack
+- from: Tom Yu
+- date: August 30, 2021
+- msg: "Can you take a look at the 11.2-consortium release: https://www.synapse.org/#!Synapse:syn26134642 WAKE has 0 variants because none of their SAMPLE_IDs  in the mutation file match whats in their clinical file…"
+
+**Notes**: 
+
+(@) CNA sample IDs match for 86%.  Mutation sample IDs for 0.
+(@) Clincal sample ID middle numbers range from 1001-2005 but mutation sample IDs from 1499-2445
+(@) Changing letter from F to C of mutation sample IDs does not increase overlap
+(@) Subtracting 1000 from the mutation sample IDs middle number increases overlap to 77%. 
+
+**Hypothesis**: It almost seems like they did a set difference to get the mutation data for the sample IDs to include but returned the wrong set.  Sample IDs for mutation file have numerical indices that are disparate and distinctly larger than those in the clinical data file. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+
+tic = as.double(Sys.time())
+
+library(glue)
+library(synapser)
+synLogin()
+library(dplyr)
+
+```
+
+```{r parameters, include = F}
+
+# synapse
+synid_clinical <- "syn7392892"
+synid_wake_mutation <- "syn22268698"
+synid_wake_cna <- "syn22271205"
+synid_sample <- "syn9734573"
+
+# parameters
+center <- "WAKE"
+
+```
+
+
+```{r functions, include = F}
+get_synapse_entity_name <- function(synapse_id) {
+  return(synGet(synapse_id, downloadFile = F)$properties$name)
+}
+
+get_synapse_entity_current_version <- function(synapse_id) {
+  return(synGet(synapse_id, downloadFile = F)$properties$versionNumber)
+}
+```
+
+
+```{r read, include = F}
+
+cli <- read.csv(synGet(synid_clinical)$path, stringsAsFactors = F, sep = "\t")
+mut <- read.csv(synGet(synid_wake_mutation)$path, stringsAsFactors = F, sep = "\t")
+cna <- read.csv(synGet(synid_wake_cna)$path, stringsAsFactors = F, sep = "\t")
+sam <- read.csv(synGet(synid_sample)$path, sep = "\t")
+
+```
+
+```{r extract, include = F}
+sam_sam <- as.character(unlist(sam %>% 
+ filter(grepl(pattern = center, x = sam[,"Sample.Identifier"]))  %>%
+ select("Sample.Identifier")))
+sam_cli <- as.character(unlist(cli %>% 
+  filter(CENTER == center) %>%
+  select("SAMPLE_ID" )))
+sam_mut <- as.character(unlist(mut %>%
+  select(Tumor_Sample_Barcode) %>%
+  distinct()))
+```
+
+## Files used
+
+```{r files}
+print(glue("Clinical file: '{get_synapse_entity_name(synid_clinical)}' ({synid_clinical}.{get_synapse_entity_current_version(synid_clinical)})"))
+print(glue("Sample file: '{get_synapse_entity_name(synid_sample)}' ({synid_sample}.{get_synapse_entity_current_version(synid_sample)})"))
+print(glue("WAKE mutation file: '{get_synapse_entity_name(synid_wake_mutation)}' ({synid_wake_mutation}.{get_synapse_entity_current_version(synid_wake_mutation)})"))
+print(glue("WAKE CNA file: '{get_synapse_entity_name(synid_wake_cna)}' ({synid_wake_cna}.{get_synapse_entity_current_version(synid_wake_cna)})"))
+```
+
+## Browse sample IDs
+
+```{r browse}
+
+# number of sample IDs
+print(glue("Number of sample IDs in the clinical file: {length(sam_cli)}"))
+print(glue("Number of sample IDs in the WAKE mutation file: {length(sam_mut)}"))
+
+
+# browse
+print(glue("A few sample IDs from '{get_synapse_entity_name(synid_clinical)}' ({synid_clinical})"))
+print(head(sam_cli))
+print(glue("A few sample IDs from '{get_synapse_entity_name(synid_wake_mutation)}' ({synid_wake_mutation})"))
+print(head(sam_mut))
+
+```
+
+## Intersection sample IDs
+
+```{r intersection}
+# verify intersection is 0 --> yes
+print(glue("Length of intersection between Sample IDs in clinical file ({synid_clinical})
+      and WAKE mutation file ({synid_clinical}): {length(intersect(sam_cli, sam_mut))}"))
+print(glue("Length of intersection between Sample IDs in sample file ({synid_sample})
+      and WAKE mutation file ({synid_clinical}): {length(intersect(sam_sam, sam_mut))}"))
+```
+
+## Examine sample ID formats
+
+```{r formats}
+
+# number of characters per sample ID
+print(glue("Number of characters in each clinical file sample ID: {unique(nchar(sam_cli))}"))
+print(glue("Number of characters in each clinical file sample ID: {unique(nchar(sam_mut))}"))
+
+# letters
+print(glue("Letters used in each clinical file sample ID: {paste0(names(table(substr(sam_cli, 12, 12))), collapse = ',')}"))
+print(table(substr(sam_cli, 12, 12)))
+print(glue("Letters used in each clinical file sample ID: {paste0(names(table(substr(sam_mut, 12, 12))), collapse = ',')}"))
+print(table(substr(sam_mut, 12, 12)))
+
+# numbers, middle
+num_cli <- as.double(substr(sam_cli, 13, 16))
+num_mut <- as.double(substr(sam_mut, 13, 16))
+xlimits = c(min(c(num_cli, num_mut)), max(c(num_cli, num_mut)))
+hist(num_cli, xlab = "Number in sample ID", ylab = "Count", main = "Clinical file", xlim = xlimits)
+hist(num_mut, xlab = "Number in sample ID", ylab = "Count", main = "Mutation file", xlim = xlimits)
+print("Quantiles of numbers in each clinical file sample ID:")
+print(quantile(num_cli))
+print("Quantiles of numbers in each clinical file sample ID:")
+print(quantile(num_mut))
+print(glue("Length of intersection of numbers used in sample IDs for the clinical and mutation files: {length(intersect(num_cli, num_mut))}"))
+
+# numbers, suffix
+suf_cli <- substr(sam_cli, 18, 19)
+suf_mut <- substr(sam_mut, 18, 19)
+print(glue("Suffixes used in each clinical file sample ID: {paste0(names(table(suf_cli)), collapse = ',')}"))
+print(table(suf_cli))
+print(glue("Suffixes used in each mutation file sample ID: {paste0(names(table(suf_mut)), collapse = ',')}"))
+print(table(suf_mut))
+
+```
+
+## Experiment with sample ID formats
+
+**Question**: Does changing the letter in the mutation file sample IDs with a 'C' improve overlap? 
+
+**Answer**: No
+
+```{r experiment with letters}
+# replacement of F for C in mutation file? only 6 in intersection after letter swap
+sam_mut_c <- gsub(pattern = "F", replacement = "C", x = sam_mut)
+print(glue("Intersection: {length(intersect(sam_mut_c, sam_cli))}"))
+```
+
+**Question**: Does subtracting 1000 from the numbers in the mutation file sample IDs improve overlap? 
+
+**Answer**: yes, but this is probably not meaningful
+
+```{r experiment with numbers}
+# subtract 1000?
+length(intersect(num_cli, num_mut)) / length(num_mut) * 100
+length(intersect(num_cli, num_mut-1000)) / length(num_mut) * 100
+sam_mut_grand <- glue("{substr(sam_mut, 1, 12)}{num_mut - 1000}{substr(sam_mut, 17, 19)}")
+
+print(glue("Percentage intersection: {length(intersect(sam_cli, sam_mut_grand)) / length(sam_mut) * 100}%"))
+```
+
+## Examine CNA file sample ids
+
+```{r cna}
+# to CNA samples match clinical file?  yes, ~ 86% at least
+sam_cli <- as.character(unlist(cli %>% 
+                                 filter(CENTER == center)  %>%
+                                 select(SAMPLE_ID)))
+sam_cna <- gsub(pattern = ".", replacement = "-", x = colnames(cna)[2:length(cna)], fixed = T)
+
+print(glue("Percentage of sample IDs found in CNA file that are found in clinical file: {round(length(intersect(sam_cli, sam_cna)) / length(sam_cna) * 100)}%"))
+
+```
+
+
+# Examine previous file versions
+
+**Question**: during what file version do the mutation file sample IDs stop matching the clinical file sample IDs?
+
+**Answer**: just the last version
+
+```{r versions}
+version_current <- synGet(synid_wake_mutation, downloadFile = F)$properties$versionNumber
+sam_ver <- list()
+
+for (version_index in 1:version_current) {
+  sam_ver[[version_index]] <- read.csv(synGet(synid_wake_mutation, version = version_index)$path, stringsAsFactors = F, sep = "\t")$Tumor_Sample_Barcode
+}
+
+# how do numbers of recorded mutations and distinct samples differ over versions?  just last is a drop
+print("Number of WAKE mutation rows:")
+unlist(lapply(sam_ver, length))
+print("Number of unique WAKE mutation sample IDs:")
+unlist(lapply(sam_ver, function(x) {length(unique(x))}))
+print("Length of intersection between unique WAKE mutation sample IDs and clinical sample IDs:")
+unlist(lapply(sam_ver, function(x) {length(intersect(sam_cli, x))}))
+
+```
+
+
+## Close out
+
+```{r close}
+toc = as.double(Sys.time())
+print(glue("Runtime: {round(toc - tic)} s"))
+```
+
