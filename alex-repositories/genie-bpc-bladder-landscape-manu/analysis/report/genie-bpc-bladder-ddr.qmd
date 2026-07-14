@@ -1,0 +1,335 @@
+---
+title: "BPC Bladder - DDR pathways"
+author: "Alex Paynter"
+date: "`r Sys.Date()`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+  chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+library(purrr); library(here); library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source) # also loads lots of packages.
+```
+
+```{r}
+dir_ddr <- here('data', 'genomic', 'ddr_def_compare')
+gg_def_compare_heatmap <- readr::read_rds(here(dir_ddr, 'gg_def_compare_heatmap.rds'))
+ft_ddr_def <- readr::read_rds(here(dir_ddr, 'ft_ddr_def.rds'))
+gg_ddr_panel <- readr::read_rds(here(dir_ddr, 'gg_ddr_panel.rds'))
+
+```
+
+## Introduction
+
+DDR pathway alterations have been hypothesized to have predictive value for those taking regimens containing both platinum-based chemotherapy and immunotherapy.  The definition of a gene being included in the DDR pathway varies widely depending on the institution, author and cancer type under study.  We will leverage both the urothelial carcinoma main GENIE subset (defined by oncotree code) and the subset selected for GENIE BPC to study the proportion who are "DDR altered" using various definitions.
+
+### R4.1 Panel coverage
+
+We (especially Michal) identified a few papers which have furnished DDR pathway gene lists.  These include:
+
+- Teo 2017 (https://doi.org/10.1158/1078-0432.CCR-16-2520) - MSK
+- Galsky 2018 (https://doi.org/10.1016/j.eururo.2017.12.001) - Mount Sinai.
+- Iyer 2018 (http://ascopubs.org/doi/full/10.1200/JCO.2017.75.0158) - MSK.
+- Yin 2020 (http://dx.doi.org/10.1634/theoncologist.2019-0851) - Ohio State.
+
+Additionally, we created an empirical gene subset from GENIE.  This includes all genes that are a part of every GENIE BPC panel, and in at least one of the papers above.  We had to exclude small panels (those around 50 genes, used in few participants) to get a reasonable set, as several panels had 0 or 2 genes in the DDR pathway included.
+
+The following heatmap shows the coverage of these four papers plus the intersection of GENIE panels (GENIE int):
+
+```{r}
+#| include: true
+#| fig-height: 2
+gg_def_compare_heatmap  
+  
+
+```
+
+### R4.2 DDR-altered patient counts
+
+Next we apply these gene lists to our data to find the number of people who have a DDR alteration.  We repeat this (in columns) for main GENIE and BPC, and using OncoKB to limit to only oncogenic alterations.
+
+In addition to the definitions above we also include two more:
+
+- Pearl, 2015 (https://doi.org/10.1038/nrc3891).  This is an academic ancestor of the papers above, and includes a huge number of genes which MAY be DDR-related.  This is included to give us a "maximal" comparison.  Two versions are included:
+  - Pearl 2015 full:  every gene in the paper.
+  - Pearl 2015 - select.  A subset of the pathways in the paper, specifically the pathways mentioned in the papers above ("MMR", "HR", "FA", "NHEJ", "BER", "NER").  The list of genes for each of these pathways is larger in the Pearl paper, so this is still a superset for comparison.
+
+The Pearl lists were not included in the plot above mostly because they include too many genes and plot gets hard to read.
+
+The following table shows the percentage having at least one ddr mutation (number of people):
+
+```{r}
+#| include: true
+ft_ddr_def
+```
+
+**Notes**
+
+- The main GENIE (GENIE-UC) and GENIE-BPC percentages are similar (but consistently slightly higher for BPC).  This gives some reassurance that we don't have an insanely biased sample.
+- Comparing the "any alt." to "oncogenic" columns, the number of patients is generally 50-70% smaller when using the OncoKB oncogenic filter. 
+- Except for the Pearl examples given for comparison, the proportion of main genie and BPC which has at least one oncogenic DDR alteration is between 19 and 24% for main genie and 18-26% for BPC.
+
+
+
+
+
+
+```{r}
+bpc_asco_2025_panel <- readr::read_rds(
+  here('data', 'genomic', 'ddr_def_compare', 'bpc_asco_2025_panel.rds')
+)
+bpc_onco_mmr_flags <- readr::read_rds(
+  here('data', 'genomic', 'ddr_def_compare', 'bpc_onco_mmr_flags.rds')
+)
+```
+
+
+### R4.3 - Alteration frequency by gene
+
+The following table shows the proportion of subjects whose first sample had an oncogenic alteration in each gene.  The genes included in this table are those in our 2025 ASCO manuscript definition of DDR altered.
+
+```{r}
+#| include: true
+gtsummary::tbl_summary(
+  select(bpc_asco_2025_panel, -c(sample_id, patient_id)) %>%
+    select(sort(tidyselect::peek_vars()))
+)
+```
+
+The following table does the same, for all the genes which were in the MMR pathway in some of the abstracts.
+
+```{r}
+#| include: true
+gtsummary::tbl_summary(
+  select(bpc_onco_mmr_flags, -c(sample_id, patient_id))
+)
+```
+
+**Note:** Originally we included some of the genes which were in the Pearl paper but not those abstracts - the rates were basically zero for those so we removed that complication.  The above table does not consider the number of people tested for each of these genes.  The heatmap below shows that the common panels *do* cover these genes well though, so we're probably not drastically off as a result.
+
+
+
+
+
+
+
+
+
+### R4.4 - Panel coverage for DDR genes
+
+The following plot takes the genes included in the paper/definition comparison (R4.1) and shows the panel coverage in GENIE.  The axis is grouped to have the BPC-used panels at the top.  After that the axis is ordered by the number of samples tested (m).
+
+The X axis puts the genes in the panel we used to define DDR first.  After that, it's alphabetical.  Coloring or similar is possible but ran out of time.
+
+```{r}
+#| include: true
+#| fig-height: 8
+
+gg_ddr_panel
+```
+
+
+
+
+```{r}
+pltly_ddr_panel_size <- readr::read_rds(
+  here('data', 'genomic', 'ddr_def_compare', 'ddr_as_outcome', 'pltly_ddr_panel_size.rds')
+)
+```
+
+
+### R4.5 - Panel size and DDR+
+
+Added in Jul 2025, this section investigates the link between the size of the panel used and being DDR+.  We use number of genes in the panel as our metric for interpretability, it might be better to use exon megabase coverage of the panel.  Three notes on the "number of genes":
+
+- We only include genes which have some coverage in exonic regions according to `genomic_information.txt`.
+- Only regions with `includeInPanel = TRUE` and do not have `clinicalReported = FALSE` are included.
+- These were both done to fix some obviously inflated gene counts, in particular with DFCI's ONCOPANEL 2.
+
+The following interactive chart shows each panel as a dot, with the number of cases tested by the panel represented by the dot's size.  The institution is colored, and each dot can be hovered over for more info (like the panel name).  The dark line is a weighted (by cases) LOESS smoother, and the dotted line is a linear fit.
+
+```{r}
+#| include: true
+
+pltly_ddr_panel_size
+```
+
+Observations:
+
+- There is a clear trend for higher DDR+ rates with larger panels.  I would not say this problem is resolved by removing smaller panels, it looks like a gradual effect.
+- There are two big outliers in main GENIE, both of which come from non-US institutions.  This could possibly be attributed to a high bar required to test people in those healthcare systems.
+- Lots of the 0% DDR+ large panels in main GENIE have only a handful of cases, so it's not that surprising that they had no DDR+ people.
+
+```{r}
+tmb_stack_ddr <- readr::read_rds(
+  here(dir_ddr, 'tmb_stack_ddr.rds')
+)
+tmb_stack_mmr <- readr::read_rds(
+  here(dir_ddr, 'tmb_stack_mmr.rds')
+)
+tmb_comp <- readr::read_rds(
+  here(dir_ddr, 'tmb_comp.rds')
+)
+
+```
+
+
+### R4.6 - TMB related to these panels
+
+The goal of this section was to compare the tumor mutation burden of those with a DDR alteration to those who do not.  There's a problem with this - those with a DDR alteration have at least one mutation, while the cohort with no DDR alterations could have zero.  Therefore we're systematically biasing the outcome by having a deterministic link between number of mutations (TMB) and being DDR+.
+
+A third column has been added to make a more fair comparison.  This is those without a DDR alteration, but who have at least one other mutation.  This way the control is bounded below by 1 mutation, just like the DDR+ positive group.  It would be my recommendation to use that column in our poster even if it is just a footnote or legend note.
+
+The group of samples included is first samples for each index cancer in the BPC bladder cohort.
+
+```{r}
+#| include: true
+tmb_stack_ddr %>% 
+  select(grp, tmb_Mb, tmb_Mb_onco) %>%
+  gtsummary::tbl_summary(
+    ., 
+    by = grp
+  )
+```
+Here is the same table for MMR+: 
+
+```{r}
+#| include: true
+tmb_stack_mmr %>% 
+  select(grp, tmb_Mb, tmb_Mb_onco) %>%
+  gtsummary::tbl_summary(
+    ., 
+    by = grp
+  )
+```
+
+*Notes:*
+
+- As expected the group with DDR and MMR alterations has higher TMB at all listed percentiles.
+- TMB is listed in mutations per megabase (the usual).  The "onco" version only counts oncogenic mutations per megabase.  This is not standard really, but I think it is probably more relevant to our analyses.
+- There are only 21 samples with zero mutations, so the issue I pointed out has a minor impact.
+
+
+
+```{r}
+dir_ddr_outcome <- here('data', 'genomic', 'ddr_def_compare', 'ddr_as_outcome')
+gg_ddr_out_mod_compare <- readr::read_rds(
+  here(dir_ddr_outcome, 'gg_ddr_out_mod_compare.rds')
+)
+ddr_out_mod_all <- readr::read_rds(
+  here(dir_ddr_outcome, 'ddr_outcome_all_model_results.rds')
+)
+ddr_outcome_mod_read_main <- readr::read_rds(
+  here(dir_ddr_outcome, 'ddr_outcome_mod_ready_main.rds')
+)
+```
+
+
+### R4.7 - DDR as outcome
+
+In this section we look for associations with a sample being detected to be DDR positive.  Each person's first sample is used, and most of the factors here do not depend directly on the status at sample timing.  A few variables do, specifically:
+
+- Muscle invasive status at the time of sampling.
+- Metastatic status at the time of sampling (I coded this so that a person is automatically muscle invasive if they're found to have a met).
+- ECOG score at the time of sampling.
+
+We two models to show.  The first is a logistic regression model with all features included as covariates (except one - see below).  Multiple imputation is used to fill in the ECOG score for the many missing values at the time of sampling.  One person was excluded due to having an unknown pathology sample time.
+
+The second model is simple (one covariate) at a time logistic regression.  This is mostly included for sanity checking, and due to the fact that some of these covariates have obvious structural relationships we're not modeling (a person can't have a metastatic sample if they're not metastatic, for instance).
+
+```{r}
+#| include: true
+gg_ddr_out_mod_compare
+```
+
+
+Notes:
+
+- Each coefficient above has a log odds ratio interpretation.  For example, the log OR associated with being upper tract compared to not is about -0.2, for an odds ratio of about 0.81, meaning upper tract is associated with lower rates of DDR alteration.
+- **Important** There are 15 black people in this dataset, and 100% of them did not have a DDR alteration.  The coefficients were excluded due to colinearity, but it's a notable finding.  The institution terms were excluded to avoid controversy there.
+
+Here is the multiple logistic regression information in a table.  Here I've converted from the log(OR) scale to odds ratios:
+
+```{r}
+#| include: true
+ddr_out_mod_all %>% 
+  filter(model %in% "Multiple LR, imputed") %>%
+  mutate(OR = formatC(exp(estimate), format = 'f', digits = 3),
+         p.value = format_p(p.value, digits = 2)) %>%
+  select(term, OR, p.value) %>%
+  filter(!str_detect(term, 'institution')) %>%
+  flextable(.)
+    
+```
+
+
+```{r}
+gg_ddr_mod_compare <- readr::read_rds(
+  here(dir_ddr_outcome, 'gg_ddr_out_mod_compare_main.rds')
+)
+```
+
+
+### R4.8 - DDR as outcome, main GENIE
+
+In main GENIE we have more samples but less information on participants.  Some of the covariates are determined in different ways (for example, upper tract here comes from the sample oncotree code rather than a derived BPC variable).
+
+Here we don't have any highly incomplete variables like ECOG score, so we will skip the multiple imputation and just compare a multiple logistic regression model with simple logistic regressions on each covariate.
+
+Some exclusions were made on data that had impossible birth year and age at sequencing values for main GENIE.  We also imputed a conservative value for people with redacted ages (e.g. assumed they were 90 those >89).
+
+```{r}
+#| include: true
+gg_ddr_mod_compare
+```
+
+Notes:
+
+- The trends here are generally consistent with what we found above.  DDR identification is less likely in upper tract cancers, female patients and in metastatic samples.  It is more likely in those with an older age at sequencing/dx (which tend to be correlated), and possibly more likely in those with a greater calendar birth year (probably several causes there).
+- While hidden, some of the institution terms are significant here.
+- The odds ratio was notably undefined for Black participants above, here 19 of the 165 black participants had a DDR alteration.  As the models indicate this is lower than marginally expected, but not dramatically.
+
+```{r}
+bundle_bpc_main_ddr <- readr::read_rds(
+  here(dir_ddr_outcome, 'bundle_bpc_main_combined.rds')
+)
+```
+
+
+### R4.9 - DDR as outcome (both)
+
+A few figures that combine the previous two sections into one figure (in order of how much I like them)
+
+```{r}
+#| include: true
+bundle_bpc_main_ddr$gg_ddr_out_both_panels[[1]]
+```
+
+
+
+```{r}
+#| include: true
+bundle_bpc_main_ddr$gg_ddr_out_both_multiple_lr[[1]]
+```
+
+
+```{r}
+#| include: true
+bundle_bpc_main_ddr$gg_ddr_out_both_jumble[[1]]
+```
+
+
