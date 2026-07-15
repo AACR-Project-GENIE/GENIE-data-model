@@ -1,0 +1,314 @@
+---
+title: "GENIE BPC BrCa post-metastasis regimens"
+author: "Alex Paynter"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, include = F,
+                      message = F, warning = F)
+```
+
+```{r}
+library(cli) # prevents an error on version reliance.
+library(readr)
+library(vctrs)
+library(rlang)
+library(here)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(magrittr)
+library(janitor)
+library(glue)
+# library(genieBPC)
+library(ggplot2)
+# library(sunburstR)
+library(huxtable)
+
+purrr::walk(.x = here("R", dir(here("R"))), .f = source)
+```
+
+
+```{r}
+# The data list in data-raw/data_list.rds still has the sarcoma patients,
+#   And participants who have multiple index cancers.  To avoid this,
+#   we pull from the processed data_list at:
+load(here("data", "prog_cohorts.Rda"))
+```
+
+```{r, calc_stage_iv_no_dmets}
+# One calculation needed for insertion into the intro material:
+n_stage_iv_no_dmets <- data_list$BrCa_v1.2$ca_dx_index %>% 
+  filter(stage_dx_iv %in% "Stage IV") %>% 
+  tabyl(ca_dmets_yn) %>%
+  # Following includes "Unknown or Not mentioned" as well as missing values in the total.
+  filter(!(ca_dmets_yn %in% "Yes")) %>%
+  pull(n) %>% 
+  sum
+```
+
+
+## Introduction
+
+This documents shows a few outputs for the breast cancer (BrCa) BioPharma Collaborative (BPC) cohort for AACR project GENIE. 
+
+Team members expressed an interest in looking at medications administered on or after identification of distant metastasis of cancer.  **This entire document is limited to drugs given on or after dmets at the moment.**  This information is encoded differently in PRISSMM for participants who are enrolled at different stages:
+
+- Stage IV - If a patient is diagnosed at stage IV then their time of distant metastasis is the diagnosis date.  An exception is made for participants who are marked stage IV with no distant metastases (currently `r n_stage_iv_no_dmets`).
+- Stage 0-III - The time of distant metastasis is directly recorded if observed, and we examine regimens starting on or after this identification.
+
+
+```{r, num_progressed}
+n_brca <- nrow(data_list_cc$BrCa_v1.2$pt_char)
+pct_of_cohort <- function(n, d = n_brca) {
+  glue("{n} ({formatC(round(n/d*100,1), format = 'f', digits = 1)}%)")
+}
+
+n_prog_0d <- dft_dmet_timing %>% filter(tt_d <= 0) %>% nrow %>% pct_of_cohort
+n_prog_5y <- dft_dmet_timing %>% filter(tt_y <= 5) %>% nrow %>% pct_of_cohort
+
+```
+
+This criterion produced a large subset, compared to what was expected for `r n_brca` total participants.  For example, `r n_prog_0d` had dmets at diagnosis and `r n_prog_5y` had dmets by 5 years after diagnosis.
+
+The cohort is also filtered so that:
+
+1. Participants with Sarcomas (by `ca_hist_adeno_squamous`) are removed.
+1. For participants with more than one index cancer, the first one is selected for analysis.
+
+
+
+
+
+```{r, eval = T}
+# get a 1-row-per-drug dataset:
+dft_drug <- prog_cohort_cc$cohort_ca_drugs %>% 
+  # Get only the index cancers:
+  left_join(
+    select(
+      prog_cohort_cc$cohort_ca_dx,
+      record_id, ca_seq
+    ),
+    ., 
+    by = c("record_id", "ca_seq")
+  ) %>% 
+  select(record_id:redcap_ca_index,
+         drugs_drug_1:drug_start_end_or_lastadm_int_5) %>%
+  mutate(across(
+    c(contains("drugs_drug_"), drugs_admin),
+    .fn = ~ vec_cast(.x, to = "character"))
+  ) %>%
+  mutate(
+    across(
+      .cols = drugs_startdt_int_1:drug_start_end_or_lastadm_int_5,
+      .fns = as_double
+    )
+  )
+
+
+
+# split off the character values, we'll do those separately
+#   to avoid casting issues.
+dft_drug_char <- dft_drug %>%
+  select(record_id, 
+         regimen_number, 
+         ca_seq,
+         drugs_drug_1: drugs_drug_5)
+
+dft_drug %<>%
+  select(-contains("drugs_drug_")) %>%
+  pivot_longer(
+    cols = drugs_startdt_int_1:drug_start_end_or_lastadm_int_5,
+    names_to = "var",
+    values_to = "value"
+  ) %>%
+  # Because "drug_num" is confusing when we have "drugs_num" in 
+  #   the raw data.
+  # This is only an id for drug within regimen within person.
+  mutate(drug_id = readr::parse_number(var),
+         var = stringr::str_replace(var, "_[0-5]", "")) %>%
+  pivot_wider(names_from = "var", values_from = "value") %>%
+  select(record_id, 
+         contains("regimen_number"), 
+         drug_id, 
+         everything()) 
+
+
+# Now do it again for the cluster of character columns.
+#   All the previous ones were integer/double.
+dft_drug_char %<>%
+  pivot_longer(
+    cols = drugs_drug_1: drugs_drug_5,
+    names_to = "var",
+    values_to = "value"
+  ) %>%
+  # Because "drug_num" is confusing when we have "drugs_num" in 
+  #   the raw data.
+  # This is only an id for drug within regimen within person.
+  mutate(drug_id = readr::parse_number(var),
+         var = stringr::str_replace(var, "_[0-5]", "")) %>%
+  # because there is only one column we don't need to pivot here,
+  #  just rename.
+  select(record_id, regimen_number, drug_id, drug = value)
+
+dft_drug <-
+  left_join(dft_drug, dft_drug_char, 
+            by = c("record_id", "regimen_number", "drug_id")) %>%
+  relocate(drug, .before = drugs_startdt_int)
+
+# empty rows here have no meaning - it's just regimens with less
+#   than 5 drugs which is not suprising or interesting.
+dft_drug %<>%
+  filter(!is.na(drug))
+```
+
+
+
+
+
+
+
+```{r}
+dft_bca <- prog_cohort_cc$cohort_ca_dx %>%
+  select(record_id, bca_subtype) %>%
+  mutate(
+    bca_subtype = forcats::fct_na_value_to_level(
+      bca_subtype, 
+      level = "NC or NR"
+    ),
+    bca_subtype = forcats::fct_recode(
+      bca_subtype,
+      # Stated preference of Pedram's
+      `HR+, HER2-` = "HER2-, HR+",
+      `HR-, HER2+` = "HER2+, HR-",
+      `HR+, HER2+` = "HER2+, HR+"
+    ),
+    #bca_subtype = forcats::fct_rev(bca_subtype)
+  ) %>%
+  group_by(bca_subtype) %>%
+  mutate(bca_group_ct = n()) %>%
+  ungroup()
+
+
+dft_drug_her_ct <- dft_drug %>%
+  select(record_id, drug) %>%
+  distinct() %>%
+  left_join(., dft_bca, by = "record_id") %>%
+  count(bca_subtype, bca_group_ct, drug) %>%
+  mutate(
+    drug = factor(drug),
+    # group these so the targetted therapies are all together:
+    drug = forcats::fct_relevel(drug, "chemo", after = 0),
+    drug = forcats::fct_relevel(drug, "endocrine", after = 1),
+    drug = forcats::fct_relevel(drug, "other targeted", after = Inf)
+  ) %>%
+  mutate(
+    prop = n/bca_group_ct,
+    str = glue("n={n} ({formatC(prop*100, digits = 1, format = 'f')}%)")
+  )
+
+gg_group_her_drug <- ggplot(data = dft_drug_her_ct,
+       aes(x = prop,
+           fill = bca_subtype,
+           y = bca_subtype)) + 
+  geom_col() + 
+  annotate(geom = 'rect', xmin = 1, xmax = 1.5, ymin = -2, ymax = 10,
+           color = "gray80", fill = "gray80") + 
+  geom_text(size = 2.5, nudge_x = .05, hjust = 0, 
+            aes(label = str)) + 
+  facet_wrap(vars(drug),
+             ncol = 3,
+             dir = "h") + 
+  scale_fill_manual(
+    name = "Subtype",
+    values = c('#4477AA', '#EE6677', '#228833', '#CCBB44', '#66CCEE', '#AA3377')
+  ) + 
+  scale_x_continuous(
+    name = "Proportion of subtype group",
+    breaks = c(0,0.5,1),
+    labels = paste(c(0, 50, 100), "%"),
+    expand = expansion(mult = c(0,0.05), add = c(0,0))
+  ) + 
+  scale_y_discrete(limits = rev) + 
+  coord_cartesian(xlim = c(0,1.2), ylim = c(0.9, 5.1)) + 
+  theme_bw() +
+  theme(
+    axis.title.y = element_blank(),
+    legend.position = "none",
+    strip.text = element_text(hjust = 0)
+  )
+```
+
+
+**Note:** It might be sensible to combine or eliminate some of these categories.  For example, parpi and other targeted could be combined, or the other targeted therapies could be excluded.
+
+## Post-dmet drugs by HR/HER2
+
+In the following plot "NR or NC" means that the HR/HER2 information is not relevant or not complete.  
+
+```{r, plot-gg-her2-hr-drug_c1, include = T, fig.width = 9, fig.height = 5}
+gg_group_her_drug
+```
+
+
+
+
+
+```{r}
+dft_drug_map %<>%
+  mutate(
+    in_any_reg = purrr::map_lgl(
+      .x = agent,
+      .f = (function(x) {
+        is_drug_in_regimens(
+          x,
+          data_list$BrCa_v1.2$ca_drugs$regimen_drugs
+        )
+      })
+    )
+  )
+
+if (any(!dft_drug_map$in_any_reg)) {
+  cli_abort("Drugs need to be filtered before being displayed.")
+}
+
+dfp_drug_map_print <- dft_drug_map %>%
+  mutate(
+    class_comp = factor(
+      class_comp,
+      levels = levels(dft_drug_her_ct$drug)
+    )
+  ) %>%
+  select(class_comp, agent) %>%
+  arrange(class_comp, agent) %>%
+  group_by(class_comp) %>%
+  summarize(vec = list(agent)) %>%
+  mutate(class_comp = if_else(is.na(class_comp),
+                              "Excluded drugs",
+                              class_comp))
+
+list_drug_print <- dfp_drug_map_print$vec
+names(list_drug_print) <- dfp_drug_map_print$class_comp
+```
+
+
+
+## Medication classification
+
+We started from a classification scheme supplied by Jesus Fuentes Antras.  Further iterations in meetings led to the decision to keep the broad classifications for chemo and endrocrine, while breaking some of the interesting classes of cancer drugs into groups.  Some drugs were excluded due to low relevance, likely data errors, etc (see Excluded drugs at bottom).  The full list of categories and drugs, only showing drugs observed in at least one index cancer regimen, is as follows:
+
+
+```{r, output_drugs, echo = F, include = T, results = 'asis'}
+for (grp in names(list_drug_print)) {
+    cat("-", grp, '\n', paste('   -', list_drug_print[[grp]], '\n'))
+}
+```
+
+
+
+
+
+

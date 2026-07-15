@@ -1,0 +1,276 @@
+---
+title: "Survival (Age and BCA type)"
+subtitle: "Assist on Evan Seffar's work"
+author: "Alex Paynter"
+date: "`r format(Sys.Date(), '%d %b %Y')`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig-width: 5 
+  fig-height: 5
+---
+
+```{r}
+library(here); library(purrr); library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source)
+```
+
+
+```{r}
+dir_input <- here('data', 'survival', 'age')
+gg_age_surv_all <- readr::read_rds(here(dir_input, 'gg_age_surv_all.rds'))
+gg_age_surv_her2_pos <- readr::read_rds(here(dir_input, 'gg_age_surv_her2_pos.rds'))
+gg_age_surv_hr_pos <- readr::read_rds(here(dir_input, 'gg_age_surv_hr_pos.rds'))
+gg_age_surv_trip_neg <- readr::read_rds(here(dir_input, 'gg_age_surv_trip_neg.rds'))
+
+dft_surv_age_bca <- readr::read_rds(here(dir_input, 'surv_age_bca_dat.rds'))
+```
+
+
+## Introduction
+
+Evan Seffar has been pursuing some models looking at the association between age and bca type.  This report analyzes the survival in the age groups he's studying to add the context of clinical effectiveness.
+
+All analyses in this report deal index from metastasis (therefore only including metastatic patients) and we always apply risk set adjustment to deal with left truncation, given the assumption of independent truncation.
+
+```{r}
+#| include = F
+
+with(
+  (dft_surv_age_bca %>%
+     filter(age_custom %in% "50-59 at dx.")),
+  survfit(Surv(
+    time = tt_cpt_dmet_yrs_pos,
+    time2 = tt_os_dmet_yrs,
+    event = os_dmet_status
+  ) ~ 1)
+) %>%
+  broom::glance(.)
+
+# For 18-39: 25 at risk at first event (9.5% of cohort)
+# For 40-49: 52 at risk at first event (13.7% of cohort)
+# For 50-59: 18 at risk at first event (12% of cohort)
+# I'm just going to insert that as text below - could pull programmatically if needed.
+```
+
+
+```{r}
+median_surv_conf_int_helper <- function(dat) {
+  sf <- with(
+    dat,
+    survfit(Surv(
+      time = tt_cpt_dmet_yrs_pos,
+      time2 = tt_os_dmet_yrs,
+      event = os_dmet_status
+    ) ~ age_custom)
+  )
+  
+  # for some insane reason broom::glance doesn't work, so we'll use 
+  # quantile.survfit and a rediculous shuffle to get what we want:
+  rtn <- quantile(sf, probs = 0.5) %>%
+    map(.x = ., .f = \(z) {
+      as_tibble(z, rownames = 'subgroup')
+    }) %>%
+    bind_rows(.) %>%
+    rename(value = `50`) %>%
+    mutate(
+      measure = rep(c('est', 'lower', 'upper'), each = n()/3)
+    ) %>%
+    pivot_wider(
+      names_from = 'measure', values_from = 'value'
+    )
+  
+  return(rtn)
+  
+}
+
+display_med_surv <- function(dat) {
+  dat %>%
+    mutate(
+      across(.cols = c(est, lower, upper),
+             .fns = \(z) round(z,2)
+      )
+    ) %>%
+    mutate(
+      med = glue("{est} ({lower}, {upper})")
+    ) %>%
+    select(subgroup, `Median (95% CI)` = med) %>%
+    flextable::flextable(.) %>%
+    autofit(.)
+}
+
+
+
+# sf <- with(
+#     dft_surv_age_bca,
+#     coxph(Surv(
+#       time = tt_cpt_dmet_yrs_pos,
+#       time2 = tt_os_dmet_yrs,
+#       event = os_dmet_status
+#     ) ~ age_custom)
+#   )
+lr_test_helper <- function(dat, return_df = F) {
+  cox_fit <- with(
+    dat,
+    coxph(Surv(
+      time = tt_cpt_dmet_yrs_pos,
+      time2 = tt_os_dmet_yrs,
+      event = os_dmet_status
+    ) ~ age_custom)
+  )
+  
+  # for some insane reason broom::glance doesn't work, so we'll use 
+  # quantile.survfit and a rediculous shuffle to get what we want:
+  rtn <- cox_fit %>%
+    broom::glance(.) %>%
+    # to me p.value.log could be read as "log p value", we don't want to confuse:
+    select(n, nevent, p.value = p.value.log) %>%
+    mutate(method = "likelihood_ratio_test")
+  
+  if (return_df) {
+    rtn
+  } else {  
+    rtn <- pull(rtn, p.value)
+  }
+  
+  return(rtn)
+}
+
+
+  
+```
+
+## Results
+
+The following KM curves look at the three age groups from Evan's analysis in several BCA subgroups.  The groups we specified without looking at the data were {HER2+, HR+/HER2-, TNBC}.  The "All" group is an exploratory iteration.
+
+After each group we state the 95% confidence interval for median survival in each age group.  The result from a likelihood ratio test assessing whether the age groups differ significantly is given after.  The latter test assumes a Cox model, but the median survival estimates are from KM estimates and don't rely on Cox model assumptions.
+
+---
+
+```{r}
+#| include: true
+gg_age_surv_all
+```
+
+*Notes:*
+
+- In the 50-59 group we discussed the low number of people at risk early on.  The number of people at risk when the first event occurs is 18 (12% of the 50-59 cohort).  
+- Percentage-wise this is perfectly in line with the other age groups (9.5% and 13.7% at risk at first event).
+
+Median survival for each age subgroup (all participants):
+
+```{r}
+#| include: true
+#| ft.align: "left"
+dft_surv_age_bca %>%
+  median_surv_conf_int_helper(.) %>%
+  display_med_surv(.)
+```
+
+```{r}
+p_all <- lr_test_helper(dft_surv_age_bca)
+```
+
+The P value from a likelihood ratio test assessing whether there is a difference in age groups in a Cox model with no other covariates is: `r round(p_all, 3)`.
+
+
+
+---
+
+```{r}
+#| include: true
+gg_age_surv_her2_pos
+```
+
+Median survival for each age subgroup (HER2+ subgroup):
+
+```{r}
+#| include: true
+#| ft.align: "left"
+dft_surv_age_bca %>%
+  filter(bca_subtype_f_simple %in% "HER2+") %>%
+  median_surv_conf_int_helper(.) %>%
+  display_med_surv(.)
+```
+
+
+```{r}
+p_her2_pos <- dft_surv_age_bca %>%
+  filter(bca_subtype_f_simple %in% "HER2+") %>%
+  lr_test_helper(.)
+
+p_hr_pos <- dft_surv_age_bca %>%
+  filter(bca_subtype_f_simple %in% "HR+, HER2-") %>%
+  lr_test_helper(.)
+
+p_tnbc <- dft_surv_age_bca %>%
+  filter(bca_subtype_f_simple %in% "Triple Negative") %>%
+  lr_test_helper(.)
+
+p_subgroup_adj <- p.adjust(c(p_her2_pos, p_hr_pos, p_tnbc), method = "BH")
+
+# unroll that vector so the code below is self-evident:
+p_her2_pos <- p_subgroup_adj[1]
+p_hr_pos <- p_subgroup_adj[2]
+p_tnbc <- p_subgroup_adj[3]
+
+
+```
+
+The P value from a likelihood ratio test assessing whether there is a difference in age groups in a Cox model with no other covariates is: `r round(p_her2_pos, 3)`.  This is after Benjamini-Hockberg correction for doing this test in three subgroups.
+
+
+---
+
+```{r}
+#| include: true
+gg_age_surv_hr_pos
+```
+
+Median survival for each age subgroup (HR+, HER2- subgroup):
+
+```{r}
+#| include: true
+#| ft.align: "left"
+dft_surv_age_bca %>%
+  filter(bca_subtype_f_simple %in% "HR+, HER2-") %>%
+  median_surv_conf_int_helper(.) %>%
+  display_med_surv(.)
+```
+
+The P value from a likelihood ratio test assessing whether there is a difference in age groups in a Cox model with no other covariates is: `r round(p_hr_pos, 3)`.  This is after Benjamini-Hockberg correction for doing this test in three subgroups.
+
+
+
+---
+
+```{r}
+#| include: true
+gg_age_surv_trip_neg
+```
+
+Median survival for each age subgroup (TNBC): 
+
+```{r}
+#| include: true
+#| ft.align: "left"
+dft_surv_age_bca %>%
+  filter(bca_subtype_f_simple %in% "Triple Negative") %>%
+  median_surv_conf_int_helper(.) %>%
+  display_med_surv(.)
+```
+
+The P value from a likelihood ratio test assessing whether there is a difference in age groups in a Cox model with no other covariates is: `r round(p_tnbc, 3)`.  This is after Benjamini-Hockberg correction for doing this test in three subgroups.
+
+---
