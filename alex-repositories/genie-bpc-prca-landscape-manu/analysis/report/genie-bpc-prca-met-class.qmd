@@ -1,0 +1,123 @@
+---
+title: "BPC Prostate - Metastatic classification"
+author: "Alex Paynter"
+date: "`r Sys.Date()`"
+output:
+  quarto::quarto_html:
+    toc: true
+    toc_float: true
+    theme:
+      name: paper
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+
+```{r}
+library(purrr); library(here); library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source) # also load
+dft_ca_ind <- readr::read_rds(here('data', 'clin', "dft_ca_ind.rds"))
+```
+
+
+## Introduction
+
+Finding the time of distant metastasis diagnosis underlies many of our analyses.  I discovered an oversight in my coding which excluded some participants from the metastatic prostate cancer analyses.  This document explains the issue and proposes two options for a solution.
+
+We have 6 BPC cohorts:  Breast, NSCLC, CRC, Pancreas, Bladder and Prostate.  The first four cancers require metastasis (M1) at diagnosis for the participant to be classified as Stage IV, and are generally easy to handle.  Prostate cancer, as everyone reading knows, can be classified as M0 or M1 and still be considered Stage IV.
+
+The reason this matters is that PRISSMM encodes metastases differently for people who are Stage IV or not at diagnosis.  I thought (incorrectly) that for people Stage IV but not metastatic at diagnosis, time of metastasis would be captured by `dx_to_dmets_yrs`, as it is for people who are Stage I-III.  This assumption caused these people to be excluded, while the below proposals would include them.
+
+One other note:  This generally did not affect the genomic analyses, where "metastasis" refers to the site biopsied rather than a clinical determination.
+
+
+```{r}
+# Checking that my classification is collectively exhaustive:
+lev_met_code <- c(
+  'Stage I-III at dx, no mets',
+  'Stage I-III at dx, met later',
+  'Stage IV at dx, met at dx',
+  'Stage IV at dx, no met at dx...',
+  'No stage stated - exclude'
+)
+
+dft_met_class <- dft_ca_ind %>%
+  mutate(
+    met_coding_class = case_when(
+      is.na(stage_dx_iv) ~ lev_met_code[5],
+      !(stage_dx_iv %in% "Stage IV") & dmets_stage_i_iii %in% 0 ~ lev_met_code[1],
+      !(stage_dx_iv %in% "Stage IV") & dmets_stage_i_iii %in% 1 ~ lev_met_code[2],
+      stage_dx_iv %in% "Stage IV" & ca_dmets_yn %in% "Yes" ~ lev_met_code[3],
+      stage_dx_iv %in% "Stage IV" & !(ca_dmets_yn %in% "Yes") ~ lev_met_code[4],
+      T ~ NA_character_
+    )
+  ) %>%
+  select(
+    record_id, ca_seq, 
+    stage_dx_iv, ca_dmets_yn, dmets_stage_i_iii, 
+    met_coding_class
+  ) %>%
+  mutate(met_coding_class = factor(met_coding_class, levels = lev_met_code))
+
+```
+
+
+## Cohort numbers
+
+The following table shows the breakdown of the BPC prostate cancer cohort:
+
+```{r}
+#| include: true
+
+tabyl(dft_met_class, met_coding_class) %>%
+  adorn_totals(.) %>%
+  mutate(str = glue("{n} ({round(percent * 100, 1)}%)")) %>%
+  select(group = met_coding_class, `n (%)` = str) %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+The group being inadvertently excluded is "Stage IV at dx, no met at dx...".  This seems undesirable since they reside between the "Stage I-III, met later" and "Stage IV, met at dx" in terms of severity at diagnosis, and excluding the middle severity group makes analyses fairly unintelligible.
+
+## Solutions
+
+### Abandon "metastatic" for "advanced disease"
+
+The first option is to classify people as having advanced disease as soon as either of these two conditions is met:
+
+- A diagnosis with Stage IV prostate cancer.
+- A distant metastasis is noted.
+
+The BPC data guide uses this definition extensively already, for example in the `tt_os_adv_yrs` variable.  This makes this the easiest option to code and explain, and the one that's most likely to align with other work using the data.  The disadvantage is that this cohort is pretty heterogeneous and "advanced disesase" seems to be used differently by authors.
+
+*Implication if implemented:* All 155 people in the excluded group will be marked advanced right at their diagnosis time.
+
+### Reconstruct metastatic times
+
+The derived variable we would typically use to find time of first metastasis, `dx_to_dmets_yrs`, is intentionally missing (a choice made in dataset construction) for anyone stage IV at diagnosis.  
+
+Despite this, the 10 site-specific variables (e.g. `dx_to_dmets_abdomen_yrs`, `dx_to_dmets_brain_yrs`, ...) are strangely completed for those who are Stage IV at diagnosis.  We could take the minimum all of these to reconstruct the first time of metastasis.  I tried this on the stage I-III patients and found that this reconstruction process works in all but 3 cases (out of 366).  99% seems fine to me, and we can ask about those 3 cases.
+
+*Implication if implemented:* For 114 of the 155 people we can find a time of metastasis.  The other 41 would not be a part of the metastatic cohort (no met noted).  The median time from diagnosis to met is 2 years.  I was expecting this to be lower than the time for those Stage I-III and it is (5 years for that group), so this seems reasonable at first pass.
+
+### Use the imaging data directly
+
+This is theoretically possible but vastly harder than either solution above, mostly due to the need to parse all the ICD-O-3 codes of metastatic sites and decide which ones are local and which are distant.  I would prefer to avoid this.
+
+## Conclusion
+
+The feedback I need from the group at this point is whether we want a paper that discusses "advanced disease" or "metastatic".  I think we have reasonable programming paths for either solution, and both are clearly better than the existing mistake.
+
+
+

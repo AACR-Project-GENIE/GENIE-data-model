@@ -1,0 +1,362 @@
+---
+title: "BPC Prostate - Survival"
+author: "Alex Paynter"
+date: "`r Sys.Date()`"
+output:
+  quarto::quarto_html:
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+library(purrr); library(here); library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source) # also loads lots of packages.
+```
+
+```{r, set_gtsummary_theme}
+theme_gtsummary_compact()
+theme_gtsummary_language("en", big.mark = "") # for now.
+```
+
+```{r}
+read_wrap_clin <- function(p) {
+  read_rds(file = here("data", 'clin', p))
+}
+
+dft_pt <- read_wrap_clin("dft_pt.rds")
+dft_ca_ind <- read_wrap_clin("dft_ca_ind.rds")
+# we're taking the augmented version, which has TMB columns added.  The existing info is the same.
+dft_cpt <- read_wrap_clin("dft_cpt_aug.rds")
+```
+
+
+## Introduction
+
+This document contains analyses related to survival for the GENIE BPC Prostate Cancer Landscape Manuscript group.  Drafting of started in Feb 2024, with brainstorming on analyses of interest in 2023 as well.
+
+The appendix defines (narrowly) a few survival terms.  Looking there may help clarify what I mean in some places, and please ask if not.
+
+## Basics
+
+```{r}
+# now in a separate script.
+gg_os_dx_stage <- readr::read_rds(
+  here('data', 'survival', 'os_dx_by_stage.rds')
+)
+```
+
+
+### R3.1.1 Survival from diagnosis
+
+The following plot shows simple Kaplan-Meier estimates from diagnosis for overall survival.  This is broken into groups for Stage I-III and Stage IV at diagnosis.
+
+```{r}
+#| include: true
+
+gg_os_dx_stage
+```
+
+Notes:
+
+- The counts for At Risk are snapshots in time.  The counts for Censored and Events are cumulative.
+- Everyone is either censored or has an event, so the total n for each group is the sum of the last entry for those two.
+- The risk set for both groups increases after 0 years due to adjustment for delayed entry.  Participants enter the risk set when they enter the cohort, which can be well after diagnosis.
+
+
+
+
+
+```{r}
+# now in a separate script.
+gg_os_dmet_adj <- readr::read_rds(
+  here('data', 'survival', 'os_dmet_by_adjustment.rds')
+)
+```
+
+### R3.1.2 Survival from metastasis
+
+Next we show survival from metastasis.  Metastasis is **not** identical to 'advanced disease' in the prostate cancer cohort because stage IV can be diagnosed with or without mets.  The strategy for identifying metastases in this cohort is spelled out in another report.  
+
+This is a good opportunity to show curves which are (recommended) and are not adjusted for left truncation.
+
+```{r}
+#| include: true
+
+gg_os_dmet_adj
+```
+
+
+
+
+
+```{r}
+dft_trunc_test <- readr::read_rds(
+  here('data', 'survival', 'trunc_test.rds')
+)
+```
+
+
+### R3.1.3 Testing truncation independence
+
+The following table shows values for the conditional Kendall Tau statistic.  Kendall tau is a measurement of the rank (nonparametric) association between the time of truncation (delayed entry due to NGS being required to join GENIE cohort) and death.  The conditional version takes censoring into account, where pairs of observations have to meet certain conditions to be included.  A negative test statistic would indicate that longer times to NGS are associated with shorter survival times than would be expected if the two variables were independent.  A positive test statistic would indicate the opposite.
+
+We repeat this several times for different cohorts.  When we index from metastasis, the difference in indexing time is not important but it *is* important that this only includes participants which had a metastasis at some point.  
+
+```{r}
+#| include: true
+
+dft_trunc_test %>%
+  filter(method %in% "MB") %>%
+  mutate(
+    ci_low = estimate - std.error * qnorm(0.975),
+    ci_high = estimate + std.error * qnorm(0.975),
+    `Cond. Kendall Tau` = cfmisc::est_int_str(estimate, ci_low, ci_high),
+    p.value = cfmisc::pval_nejm(p.value)) %>%
+  select(` ` = lab, `Cond. Kendall Tau`, p.value) %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+**Notes:** 
+
+- Based on the results, we might say the dependence seems more for early stage cases than when limit to the most severe cases (metastatic at diagnosis).  However, all appear to have dependence.
+- We apply the method of Martin and Betensky (https://doi.org/10.1198/016214504000001538), which should be sufficient for testing the null.  The $\hat{\tau}_{c_2}$ IPW method from https://doi.org/10.1016%2Fj.csda.2013.11.018 was generally similar.
+- It's notable that even for those who are metastatic at diagnosis we seem to have a major dependence, which makes this cohort somewhat unique compared to those analyzed in https://doi.org/10.1001%2Fjamaoncol.2021.5153.
+  - Obvious differences:  Prostate cancer has longer survival times, and Stage IV prostate cancer generally seems to denote a much lower hazard of death than some others.
+  - One hypothesized sequence of events contributing to the negative association between truncation and survival is a worsening cancer which would prompt both testing and increased risk of death.  If this is more true in prostate cancer which is stage IV than other cancers, it could explain the test result we're seeing.  For example, maybe people are tested for pembro eligibility frequently when a sign of worsening is observed.  Clinical thoughts on hypotheses are surely more valuable than mine.
+
+
+
+
+## Specific questions
+
+
+
+```{r}
+dft_met_hrd_surv <- readr::read_rds(
+  here('data', 'outcome', 'surv_met_hrd', 'met_hrd_surv.rds')
+)
+
+dft_met_hrd_surv %<>% 
+  remove_trunc_gte_event(
+    trunc_var = 'fmr_fcpt_yrs',
+    event_var = 'tt_os_first_met_reg_yrs'
+  )
+
+dft_met_hrd_surv %<>% mutate(fmr_fcpt_yrs = ifelse(fmr_fcpt_yrs < 0, 0, fmr_fcpt_yrs))
+
+surv_obj_os_fmr <- with(
+  dft_met_hrd_surv,
+  Surv(
+    time = fmr_fcpt_yrs,
+    time2 = tt_os_first_met_reg_yrs,
+    event = os_first_met_reg_status
+  )
+)
+
+dft_met_hrd_surv %<>%
+  mutate(
+    hrd_disp = case_when(
+      hrd_before_entry ~ "Oncogenic HRD",
+      T ~ "No Onco. HRD"
+    )
+  )
+
+gg_os_fmr_hrd <- plot_one_survfit(
+  dat = dft_met_hrd_surv,
+  surv_form = surv_obj_os_fmr ~ hrd_disp,
+  plot_title = "OS from first metastatic regimen",
+  plot_subtitle = "Adjusted for (independent) delayed entry"
+)
+
+  
+```
+
+
+
+
+### R3.2.1 HRD pathway
+
+In our Feb 2024 meeting the group expressed an interest in looking at overall survival comparing those with an oncogenic homologous repair deficiency (HRD) mutation, compared with those who do not.  We discussed the complication added by lower rates of BRCA2 reported at sites with normal-matched genomic samples, compared with those doing tumor-only sequencing.
+
+These are the restrictions needed to form the cohort for this analysis:
+
+- Include only participants with a metastasis and at least one regimen after that diagnosis.
+- For determining HRD covariate:
+  - For each subject, include only NGS tests which had a pathology specimen collected before they enter the risk set.  Risk set entry happens when both (1) first NGS test for that subject is reported and (2) the index event, first met regimen, happens.
+  - Include only alterations which are oncogenic and include a HUGO symbol in the HRD pathway according to Pearl (2015).  The genetic report has a list of qualifying HUGO symbols in an appendix.
+  
+The following plot shows Kaplan-Meier survival curves for those two groups:
+
+```{r}
+#| include: true
+gg_os_fmr_hrd
+```
+
+```{r}
+dft_alt_onco_hrd <- readr::read_rds(
+  here('data', 'outcome', 'surv_met_hrd', 'alt_onco_hrd.rds')
+)
+
+dft_onco_hrd_before_entry <- dft_alt_onco_hrd %>% 
+  filter(dx_path_proc_cpt_yrs < dx_entry) 
+
+dft_onco_hrd_before_entry %<>%
+  count(alt_type, hugo, fusion_desc) %>%
+  mutate(
+    desc = case_when(
+      alt_type %in% "Mutation" ~ hugo,
+      alt_type %in% "Fusion" ~ fusion_desc,
+      T ~ NA_character_
+    )
+  ) %>%
+  select(alt_type, desc, n) %>%
+  arrange(alt_type, desc(n))
+
+```
+
+The following table shows the mutations which met the criteria above (oncogenic, HRD pathway, sample taken at the right time).  The total here is greater than the number of subjects in the Oncogenic HRD group above because each person can have more than one HRD alteration.
+
+```{r}
+#| include: true
+dft_onco_hrd_before_entry %>%
+  flextable(.) %>%
+  autofit(.) %>% 
+  merge_v(j = 1) %>% 
+  valign(valign = "top") %>%
+  fix_border_issues(.)
+```
+
+*Notes:*
+
+- As expected BRCA2 is prominent here, the tumor-normal vs tumor-only issue may require some thought.
+
+```{r}
+dft_hrd_drugs <- dft_met_hrd_surv %>% 
+  count(hrd_disp, regimen_drugs) %>%
+  group_by(hrd_disp) %>%
+  arrange(desc(n)) %>%
+  slice(1:5) %>%
+  ungroup(.) %>%
+  rename(` ` = hrd_disp)
+```
+
+Finally, this table shows a list of the top 5 regimens in each HRD group which counted as the first regimen after metastasis.
+
+```{r}
+#| include: true
+dft_hrd_drugs %>%
+  flextable(.) %>%
+  autofit(.) %>%
+  merge_v(j = 1) %>% 
+  valign(valign = "top") %>%
+  fix_border_issues(.)
+```
+
+*Notes:*
+
+- Popular drugs seem similar between groups.
+- We discussed grouping drugs, hopefully easier with a list.
+
+
+
+
+```{r}
+dft_met_hrd_surv_no_adj <- readr::read_rds(
+  here('data', 'outcome', 'surv_met_hrd', 'met_hrd_surv.rds')
+)
+
+dft_met_hrd_surv_no_adj %<>% mutate(fmr_fcpt_yrs = ifelse(fmr_fcpt_yrs < 0, 0, fmr_fcpt_yrs))
+
+surv_obj_os_fmr_no_adj <- with(
+  dft_met_hrd_surv_no_adj,
+  Surv(
+    time = tt_os_first_met_reg_yrs,
+    event = os_first_met_reg_status
+  )
+)
+
+dft_met_hrd_surv_no_adj %<>%
+  mutate(
+    hrd_disp = case_when(
+      hrd_before_pm_reg ~ "Oncogenic HRD",
+      T ~ "No Onco. HRD"
+    )
+  )
+
+gg_os_fmr_hrd_no_adj <- plot_one_survfit(
+  dat = dft_met_hrd_surv_no_adj,
+  surv_form = surv_obj_os_fmr_no_adj ~ hrd_disp,
+  plot_title = "OS from first metastatic regimen",
+  plot_subtitle = "NOT adjusted for delayed entry"
+)
+```
+
+
+Finally, we initially discussed running this analysis with an without risk set adjustment (for left truncation).  If we want do this, I think we would have to amend our criterion to say that the NGS sample would need to be collected before the first metastatic regimen (which would now be the time of risk set entry).  There are only `r sum(dft_met_hrd_surv_no_adj$hrd_before_pm_reg)` people who have an HRD mutation before the first met regimen. Here is the KM curve for that analysis:
+
+```{r}
+#| include: true
+gg_os_fmr_hrd_no_adj
+```
+
+*Notes:*
+
+- The difference between HRD and no HRD is not major in either the risk set adjusted graph or this one.
+- As we would expect, removing the risk set adjustment changes the survival curves dramatically.  Median survival with adjustment was about 3.5 years for the no-HRD group, >5 here.
+
+
+
+
+
+
+
+
+
+
+
+## Appendix
+
+### Post-death sequencing
+
+We assume that participants enter the GENIE cohort when they have an NGS test **reported**, and use the variable `dx_cpt_rep_yrs` as the marker of cohort entry.  Because it is possible for patients to die before their report is returned, some patients are excluded from survival analyses by this choice.  In this cohort the numbers excluded are not trivial.  
+
+For example, in an analysis of overall survival adjusting for delayed entry in the whole cohort (n=1116), 30 subjects are excluded for this reason.  These participants have much shorter survival than the included people.
+
+Comments on other variables that could be used:
+
+- Aside from report date, there are other times measured.  
+- `cpt_order_int`, the interval to the order for the cancer panel test, is unfortunately not complete (especially for UHN), and `dx_path_proc_cpt_yrs`, which is complete but does not seem relevant to cohort entry time.  
+- We DO use the pathology procedure date for deriving genomic covariates in some cases.
+
+
+### Terminology
+
+The following definitions are intentionally narrowed to the scope we will use them in for this work.  Sorry for the litany:
+
+- **Index event** or **"Time 0"** or **index time** - The event we're interested in measuring time from.  Common choices are diagnosis, metastasis, or start of a drug.
+- **Event of interest** - Event that we're measuring time to, for example death or progression.
+- **Censoring** - When a patient is lost before the event of interest occurs.  For example, the followup period ended before they died, or they left for another country before a progression occurred.
+- **Delayed entry** - A key requirement for recruitment into the BPC cohorts is having a next generation sequencing (NGS, equivalent to "cancer panel test") test.  After recruitment, medical records are retrospectively assessed.  This means that if we're indexing from an event that could occur before NGS (like diagnosis or metastasis), participants can enter the cohort after the index event happens.  Having a gap between index time and cohort entry is known as delayed (cohort) entry.  The reason this is important is that some people may die before they enter the cohort, so delayed entry will introduce selection bias toward the longer survival times.
+- **Left truncation** - For our purposes this will be equivalent to delayed entry.  The event of interest distribution is truncated by removing those who are not recruited before death.
+  - Truncation occurs with patients who we never observe (never entered the cohort).  This differs from censoring happens with patients who entered the cohort, but that we didn't happen to observe the event of interest for.
+  - cBioPortal does not currently adjust for left truncation at all, so don't be surprised if the curve there differs dramatically from one here.
+  - **Independent left truncation** - The distribution for truncation and the time to event are independent.  In our context would mean, for example, that the time it takes someone to get sequenced is not related to how long they live.  This is obviously not always true, and this has been pointed out with GENIE data specifically: https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2766816.
+    - Methods that "adjust for left truncation" usually do so assuming independent left truncation, including most of our work here.
+- **Risk set** - The set of participants capable of having the event of interest at a given time.
+  - **Adjusting the risk set** is the same as adjusting for left truncation assuming independent left truncation.  It means we're only counting people who have both entered the cohort (the adjustment) and passed the index time as "at risk".
+
+
