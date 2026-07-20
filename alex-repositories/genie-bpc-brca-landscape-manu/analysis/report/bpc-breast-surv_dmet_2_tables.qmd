@@ -1,0 +1,185 @@
+---
+title: "BPC Breast - Distant metastasis v2"
+sutitle: "Table versions of results (for now)"
+author: "Alex Paynter"
+date: "`r Sys.Date()`"
+output:
+  quarto::quarto_html:
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+
+
+```{r}
+library(fs); library(purrr); library(here);
+purrr::walk(.x = fs::dir_ls(here("R")), .f = source)
+```
+
+
+```{r}
+source_folder_top <- here('data', 'survival', 'v2')
+```
+
+
+```{r}
+# Copy pasta from the previous file.
+read_wrap_surv_sum <- function(file) {
+  readr::read_rds(
+    here(source_folder_top, 'fit_outputs', 'fit_summary', paste0(file, '.rds')
+    )
+  ) 
+}
+
+
+dft_coef_dmet_os_all <- read_wrap_surv_sum(
+     "coef_dmet_os_all"
+)
+dft_coef_dmet_os_trip_neg <- read_wrap_surv_sum(
+     "coef_dmet_os_trip_neg"
+)
+dft_coef_dmet_os_hr_pos_her2_neg <- read_wrap_surv_sum(
+  "coef_dmet_os_hr_pos_her2_neg"
+)
+dft_coef_dmet_os_her2_pos <- read_wrap_surv_sum(
+  "coef_dmet_os_her2_pos"
+)
+
+
+dft_model_compare_dmet_os_all <- read_wrap_surv_sum(
+  "model_compare_os_all"
+)
+dft_model_compare_dmet_os_trip_neg <- read_wrap_surv_sum(
+  "model_compare_os_trip_neg"
+)
+dft_model_compare_dmet_os_hr_pos_her2_neg <- read_wrap_surv_sum(
+  "model_compare_os_hr_pos_her2_neg"
+)
+dft_model_compare_dmet_os_her2_pos <- read_wrap_surv_sum(
+  "model_compare_os_her2_pos"
+)
+
+
+
+
+
+# Can replace these once you go back and fix the survival function creator:
+dft_dmet_surv_all <- readr::read_rds(
+  file = here(source_folder_top, 'prepared_data', 'surv_dmet_all.rds')
+)
+dft_dmet_surv_trip_neg <- readr::read_rds(
+  file = here(source_folder_top, 'prepared_data', 'surv_dmet_trip_neg.rds')
+)
+dft_dmet_surv_hr_pos_her2_neg <- readr::read_rds(
+  file = here(source_folder_top, 'prepared_data', 'surv_dmet_hr_pos_her2_neg.rds')
+)
+dft_dmet_surv_her2_pos <- readr::read_rds(
+  file = here(source_folder_top, 'prepared_data', 'surv_dmet_her2_pos.rds')
+)
+
+
+
+
+
+# Add the hazard ratio to all of these.  Easiest way to handle the plot scaling below.
+dft_coef_dmet_os_all %<>% mutate(hr = exp(log_hr))
+dft_coef_dmet_os_her2_pos %<>% mutate(hr = exp(log_hr))
+dft_coef_dmet_os_hr_pos_her2_neg %<>% mutate(hr = exp(log_hr))
+dft_coef_dmet_os_trip_neg %<>% mutate(hr = exp(log_hr))
+
+
+remove_institution_terms <- function(dat, col = 'term', drop_removed = T) {
+  dat %<>%
+    filter(!str_detect(.data[[col]], "^institution"))
+  
+  if (drop_removed) {
+    dat %<>% mutate({{col}} := fct_drop(.data[[col]]))
+  }
+  return(dat)
+}
+
+# Remove institution from the plots:
+dft_coef_dmet_os_all %<>% remove_institution_terms(.)
+dft_coef_dmet_os_her2_pos %<>% remove_institution_terms(.)
+dft_coef_dmet_os_hr_pos_her2_neg %<>% remove_institution_terms(.)
+dft_coef_dmet_os_trip_neg %<>% remove_institution_terms(.)
+
+dft_model_compare_dmet_os_all %<>% remove_institution_terms(.)
+dft_model_compare_dmet_os_trip_neg %<>% remove_institution_terms(.)
+dft_model_compare_dmet_os_her2_pos %<>% remove_institution_terms(.)
+dft_model_compare_dmet_os_hr_pos_her2_neg %<>% remove_institution_terms(.)
+
+```
+
+
+## Introduction
+
+Results in table form to help me with writing (previously a slide show - why did I do that to myself?  Slide shows are terrible).
+
+```{r}
+dt_help <- function(dat) {
+  dat %>%
+    mutate(abs_log_hr = abs(log_hr)) %>%
+    select(term, hr, sf = stability, abs_log_hr) %>%
+    arrange(desc(sf)) %>%
+    mutate(
+      hr = round(hr, 4),
+      sf = paste0(formatC(sf*100, digits = 1, format = 'f'), "%"),
+      abs_log_hr = formatC(abs_log_hr, digits = 4, format = 'f')
+    ) %>%
+    DT::datatable(., options = list(pageLength = 20))
+  
+}
+```
+
+
+## Results
+
+### All patients
+
+```{r}
+#| include: true
+dft_coef_dmet_os_all %>%
+  dt_help(.)
+```
+
+### HER2+
+
+```{r}
+#| include: true
+dft_coef_dmet_os_her2_pos %>%
+  dt_help(.)
+```
+
+
+### TNBC
+
+```{r}
+#| include: true
+dft_coef_dmet_os_trip_neg %>%
+  dt_help(.)
+```
+
+
+
+### HR+/HER2-
+
+```{r}
+#| include: true
+dft_coef_dmet_os_hr_pos_her2_neg %>%
+  dt_help(.)
+```
+

@@ -1,0 +1,543 @@
+---
+title: "Breast cancer survival by drug"
+subtitle: "Feasibility step - list the most common metastatic regimens by BCA type"
+author: "Alex Paynter"
+date: "`r format(Sys.Date(), '%d %b %Y')`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+  chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 3
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+library(fs); library(purrr); library(here);
+purrr::walk(.x = fs::dir_ls(here("R")), .f = source)
+```
+
+
+```{r}
+
+dft_pt <- readr::read_rds(
+  here('data', 'clin_data_cohort', 'dft_pt.rds')
+)
+dft_ca_ind <- readr::read_rds(
+  here('data', 'clin_data_cohort', 'dft_ca_ind.rds')
+)
+dft_reg <- readr::read_rds(
+  here('data', 'clin_data_cohort', 'dft_reg.rds')
+)
+
+dft_clin_char_dmet <- readr::read_rds(
+  here('data', 'survival', 'v2', 'prepared_data', 'clin_char_dmet.rds')
+)
+
+dft_clin_char_dmet %<>%
+  filter(!is.na(dx_to_dmets_yrs)) %>%
+  # removes some of the survival stuff to avoid confusion
+  select(
+    -c(os_dx_status, tt_os_dx_yrs,
+       pfs_i_and_m_adv_status,
+       tt_pfs_i_and_m_adv_yrs,
+       tt_os_dmet_yrs)
+  )
+    
+
+dft_reg_met <- left_join(
+  dft_clin_char_dmet,
+  dft_reg,
+  by = c('record_id', 'ca_seq')
+)
+
+dft_reg_met %<>%
+  # only regmiens started on or after dmet
+  mutate(dmet_reg_start_yrs = dx_reg_start_int_yrs - dx_to_dmets_yrs) %>%
+  filter(dmet_reg_start_yrs > -0.5/365)
+
+vec_drug_exclusions <- c("Leuprolide Acetate", "Goserlin Acetate")
+
+# This probably isn't the best place to limit on investigational agents, can fix later on.
+dft_reg_met %<>%
+  filter(
+    !str_detect(regimen_drugs, "Investigational"),
+    !(regimen_drugs %in% c("Leuprolide Acetate", "Goserlin Acetate"))
+  )
+                           
+
+dft_bca_nest <- dft_reg_met %>%
+  arrange(bca_subtype_f, dmet_reg_start_yrs) %>%
+  nest(.by = bca_subtype_f) 
+
+# In an effort to perputaully confuse our readers let's also introduce ER positive.
+dft_reg_met_er <- dft_ca_ind %>% 
+  select(record_id, ca_seq, ca_bca_er) %>%
+  left_join(
+    .,
+    dft_reg_met,
+    by = c('record_id', 'ca_seq')
+  ) %>%
+  mutate(
+    bca_subtype_er_f = case_when(
+      is.na(bca_subtype) & ca_bca_er %in% "Positive/elevated"  ~ "ER+, HER2?",
+      bca_subtype %in% c("HER2+, HR+", "HER2+, HR-") & ca_bca_er %in% "Positive/elevated"  ~ "ER+, HER2+",
+      bca_subtype %in% c("HER2-, HR+", "Triple Negative") & ca_bca_er %in% "Positive/elevated"  ~ "ER+, HER2-",
+      T ~ NA_character_ 
+    )
+  )
+
+
+
+dft_bca_nest <- bind_rows(
+  mutate(dft_bca_nest, bca_subtype = as.character(bca_subtype_f)),
+  (dft_reg_met_er %>%
+     arrange(bca_subtype_er_f, dmet_reg_start_yrs) %>%
+     nest(.by = bca_subtype_er_f) %>%
+     filter(!is.na(bca_subtype_er_f)) %>%
+      rename(bca_subtype = bca_subtype_er_f))
+) %>%
+  select(-bca_subtype_f) 
+  
+  
+
+dft_bca_nest %<>%
+  mutate(
+    dat_exposed = purrr::map(
+      .x = data,
+      .f = \(z) {
+        z %>%
+          count(record_id, regimen_drugs) %>%
+          count(regimen_drugs, sort = T)
+      }
+    ),
+    ft_exposed = purrr::map(
+      .x = dat_exposed,
+      .f = \(z) {
+        z %>%
+          slice(1:min(c(n(),10))) %>%
+          flextable(.) %>%
+          autofit(.)
+      }
+    )
+  )
+
+
+dft_bca_nest %<>%
+  mutate(
+    dat_1L = purrr::map(
+      .x = data,
+      .f = \(z) {
+        z %>%
+          group_by(record_id) %>%
+          arrange(dmet_reg_start_yrs) %>%
+          slice(1) %>%
+          ungroup() %>%
+          count(regimen_drugs, sort = T)
+      }
+    ),
+    ft_1L = purrr::map(
+      .x = dat_1L,
+      .f = \(z) {
+        z %>%
+          slice(1:min(c(n(),10))) %>%
+          flextable(.) %>%
+          autofit(.)
+      }
+    )
+  )
+
+dft_bca_nest %<>%
+  mutate(
+    dat_cdk = purrr::map(
+      .x = data,
+      .f = \(z) {
+        z %>%
+          group_by(record_id) %>%
+          filter(str_detect(regimen_drugs, "ciclib")) %>%
+          ungroup() %>%
+          count(regimen_drugs, sort = T)
+      }
+    ),
+    ft_cdk = purrr::map(
+      .x = dat_cdk,
+      .f = \(z) {
+        z %>%
+          slice(1:min(c(n(),10))) %>%
+          flextable(.) %>%
+          autofit(.)
+      }
+    )
+  )
+
+  
+```
+
+## Restrictions
+
+- Excluded any regimen with an investigational agent.
+- Excluded these drugs from being considered lines:  `r paste(vec_drug_exclusions, collapse = ", ")`.
+  - We can exclude additional drugs if needed get reasonable first line therapy counts below.
+
+## Counts (usual groups)
+
+All of the following counts are for metatstatic regimens.  Fr each BCA subtype we provide two tables:
+
+- **Any met** - the count of people who received a regimen at anytime on or after metastasis.
+- **First line** the count of people whose first regimen started after met diagnosis was X.
+- **CDK** the count of people exposed to each CDK regimen (anything ending in "ciclib".
+
+Both of these tables are limited to the top 10.
+
+### HR+, HER2+
+
+Any met:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "HR+, HER2+") %>%
+  pull(ft_exposed) %>%
+  `[[`(.,1)
+```
+
+First line:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "HR+, HER2+") %>%
+  pull(ft_1L) %>%
+  `[[`(.,1)
+```
+
+CDK:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "HR+, HER2+") %>%
+  pull(ft_cdk) %>%
+  `[[`(.,1)
+```
+
+
+
+
+
+### HR+, HER2-
+
+Any met:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "HR+, HER2-") %>%
+  pull(ft_exposed) %>%
+  `[[`(.,1)
+```
+
+First line:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "HR+, HER2-") %>%
+  pull(ft_1L) %>%
+  `[[`(.,1)
+```
+
+CDK:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "HR+, HER2-") %>%
+  pull(ft_cdk) %>%
+  `[[`(.,1)
+```
+
+
+
+
+
+
+
+### HR-, HER2+
+
+Any met:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "HR-, HER2+") %>%
+  pull(ft_exposed) %>%
+  `[[`(.,1)
+```
+
+First line:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "HR-, HER2+") %>%
+  pull(ft_1L) %>%
+  `[[`(.,1)
+```
+
+CDK:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "HR-, HER2+") %>%
+  pull(ft_cdk) %>%
+  `[[`(.,1)
+```
+
+
+
+
+### Triple Negative
+
+Any met:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "Triple Negative") %>%
+  pull(ft_exposed) %>%
+  `[[`(.,1)
+```
+
+First line:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "Triple Negative") %>%
+  pull(ft_1L) %>%
+  `[[`(.,1)
+```
+
+CDK:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "Triple Negative") %>%
+  pull(ft_cdk) %>%
+  `[[`(.,1)
+```
+
+
+
+```{r}
+#| eval: false
+
+# had a question
+
+# any platinum
+dft_bca_nest %>%
+  filter(bca_subtype %in% "Triple Negative") %>%
+  pull(dat_1L) %>%
+  `[[`(.,1) %>%
+  filter(
+    str_detect(
+      tolower(regimen_drugs),
+      "carboplatin|cisplatin"
+    )
+  ) %>%
+  pull(n) %>%
+  sum
+
+
+# any plat +/- gem
+dft_bca_nest %>%
+  filter(bca_subtype %in% "Triple Negative") %>%
+  pull(dat_1L) %>%
+  `[[`(.,1) %>%
+  filter(
+    str_detect(
+      tolower(regimen_drugs),
+      "carboplatin|cisplatin"
+    ) &
+     str_detect(
+      tolower(regimen_drugs),
+      "gemcitabine"
+    ) 
+  ) %>%
+  pull(n) %>%
+  sum
+
+# any platinum
+dft_bca_nest %>%
+  filter(bca_subtype %in% "Triple Negative") %>%
+  pull(dat_1L) %>%
+  `[[`(.,1) %>%
+  filter(
+    str_detect(
+      tolower(regimen_drugs),
+      "taxel"
+    )
+  ) %>%
+  pull(n) %>%
+  sum
+
+dft_bca_nest %>%
+  filter(bca_subtype %in% "Triple Negative") %>%
+  pull(dat_1L) %>%
+  `[[`(.,1) %>%
+  filter(
+    str_detect(
+      tolower(regimen_drugs),
+      "capecita"
+    )
+  ) %>%
+  pull(n) %>%
+  sum
+    
+    
+```
+
+
+### (missing BCA type)
+
+Any met:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(is.na(bca_subtype)) %>%
+  pull(ft_exposed) %>%
+  `[[`(.,1)
+```
+
+First line:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(is.na(bca_subtype)) %>%
+  pull(ft_1L) %>%
+  `[[`(.,1)
+```
+
+CDK:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(is.na(bca_subtype)) %>%
+  pull(ft_cdk) %>%
+  `[[`(.,1)
+```
+
+
+
+
+
+
+
+
+
+## Counts (ER-based)
+
+Inferring from our initial discussion, estrogen receptor (ER) status might be more important than HR.  In this section we detail the numbers for the two ER+ groups defined by HER2 status. Obviously these are overlapping with the previous.
+
+### ER+, HER2+
+
+
+Any met:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "ER+, HER2+") %>%
+  pull(ft_exposed) %>%
+  `[[`(.,1)
+```
+
+First line:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "ER+, HER2+") %>%
+  pull(ft_1L) %>%
+  `[[`(.,1)
+```
+
+CDK:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "ER+, HER2+") %>%
+  pull(ft_cdk) %>%
+  `[[`(.,1)
+```
+
+
+### ER+, HER2-
+
+
+Any met:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "ER+, HER2-") %>%
+  pull(ft_exposed) %>%
+  `[[`(.,1)
+```
+
+First line:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "ER+, HER2-") %>%
+  pull(ft_1L) %>%
+  `[[`(.,1)
+```
+
+CDK:
+
+```{r}
+#| include: true
+dft_bca_nest %>%
+  filter(bca_subtype %in% "ER+, HER2-") %>%
+  pull(ft_cdk) %>%
+  `[[`(.,1)
+```
+
+
+
+
+
+```{r}
+#| eval: false
+dft_reg_met_er %>% 
+  filter(
+    !(str_detect(bca_subtype, "HER2+") |
+        bca_subtype_er_f %in% "ER+, HER2-") |
+      is.na(bca_subtype) | is.na(bca_subtype_er_f)
+  ) %>%
+  group_by(record_id) %>%
+  arrange(dx_reg_start_int) %>%
+  slice(1) %>%
+  ungroup() %>%
+  count(regimen_drugs, sort = T)
+```
+

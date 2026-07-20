@@ -1,0 +1,246 @@
+---
+title: "J&J Innovative Medicine Osimertinib Studies"
+subtitle: "Reqested by Tony Wu"
+author: "Alex Paynter"
+date: "Last updated `r Sys.Date()`"
+output:
+  quarto::quarto_html:
+editor_options:
+  quarto:
+    chunk_output_type: console
+  chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+
+library(purrr); library(fs); library(here)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source)
+```
+
+
+## Introduction
+
+This report assesses the feasibility of using GENIE participants for several studies of osimertinib in EGFR-mutated NSCLC patients.  Two GENIE cohorts will be relevant to our discussion:
+
+- **BPC** (biopharma collaborative)
+  - n = 3,549 with NSCLC
+  - Heavy clinical annotation (hundreds of variables)
+  - Same genomic data as main GENIE.
+- **Main GENIE**
+  - n = 26,857 with NSCLC
+  - Light clinical annotation (~20 variables)
+  - Genomic data sufficient to identify EGFR mutated samples.
+
+The BPC cases may be usable without further curation.  In order to assess number of main GENIE cases which may be available to curate, we use the BPC data to evaluate the proportion remaining after applying study criteria.  Then we apply that proportion to the size/rate of the main GENIE cohort.
+
+```{r}
+dft_flow_all <- readr::read_rds(
+  here('data', 'table_method_jj_all.rds')
+)
+
+dft_flow_cop_b <- readr::read_rds(
+  here('data', 'table_method_jj_cop_b.rds')
+)
+dft_flow_emer <- readr::read_rds(
+  here('data', 'table_method_jj_emer.rds')
+)
+
+dft_lot_osi_adv_met <- readr::read_rds(
+  file = here('data', 'line_of_therapy_from_advanced.rds')
+)
+```
+
+
+```{r}
+cohort_process_help <- function(
+    coh, 
+    # These numbers come from another project.  Simple linear regression slopes to get the rates from version 11 to 16.
+    n_main_genie_nsclc = 26857,
+    n_main_genie_nsclc_egfr_mut = 3651,
+    rate_main_genie_nsclc = 3762,
+    rate_main_genie_nsclc_egfr_mut = 517
+) {
+  coh %<>%
+    mutate(
+      n = purrr::map_dbl(
+        .x = dat,
+        .f = nrow
+      )
+    )
+  
+  coh_nsclc_egfr <- coh %>%
+    filter(str_detect(message, "EGFR L858R")) %>%
+    pull(n)
+  
+  coh %<>%
+    mutate(.prop = n / coh_nsclc_egfr)
+  
+  coh %<>%
+    mutate(
+      # retro = main genie retrospective, a count.
+      retrospective = case_when(
+        str_detect(message, "People with NSCLC") ~ n_main_genie_nsclc,
+        str_detect(message, "EGFR L858R") ~ n_main_genie_nsclc_egfr_mut,
+        T ~ n_main_genie_nsclc_egfr_mut * .prop
+      ),
+      prospective = case_when(
+       str_detect(message, "People with NSCLC") ~ rate_main_genie_nsclc,
+        str_detect(message, "EGFR L858R") ~ rate_main_genie_nsclc_egfr_mut,
+      T ~ rate_main_genie_nsclc_egfr_mut * .prop
+      )
+    )
+  
+  coh %<>%
+    # just for simplicity:
+    mutate(
+      across(
+        .cols = c(n, retrospective, prospective),
+        .fns = round
+      )
+    ) %>%
+    select(
+      `Step (cumulative)` = message,
+      `BPC/curated (n)` = n,
+      `Retrospective (n)` = retrospective,
+      `Prospective (n/yr.)` = prospective
+    )
+  return(coh)
+}
+
+flow_process_wrap <- function(dat) {
+  dat %>%
+    cohort_process_help(.) %>%
+    flextable(.) %>%
+    color(color = "gray70", part = "body") %>%
+    color(i = 1:2, color = "black", part = "body") %>%
+    color(j = 1:2, color = "black", part = "body") %>%
+    # bold(part = "body", i = 1, j = 3) %>%
+    # italic(part = "body", i = 1, j = 3) %>%
+    autofit(.)
+}
+```
+
+
+```{r}
+dfp_flow_all <- dft_flow_all %>% flow_process_wrap
+dfp_flow_cop_b <- dft_flow_cop_b %>% flow_process_wrap
+dfp_flow_emer <- dft_flow_emer %>% flow_process_wrap
+```
+
+
+## Filtering
+
+Tables below show how many people are left in the GENIE cohort after each filtering step.   Three numbers are stated in each row:
+
+- **BPC/curated** The number of people with full clinical annotation that are available to access today (for BPC consortium members).
+- **Retrospective** The maximum number of cases available for curation which we would expect to meet study criteria.  These come from main GENIE where we have limited clinical annotation today.  Curation could be done selectively using the information we do have.
+- **Prospective** The number of new cases meeting criteria we would expect to enter the main GENIE cohort each year.  This is based on the rate over the past 3 years. 
+
+The study criteria are reordered slightly to put the things we can explicitly evaluate in main GENIE first.  The black numbers represent explicit counts using already-collected data.  The gray numbers are projected estimates from the last black number in each column (see example below).
+
+### COCOON and COPERNICUS (A)
+
+```{r}
+#| include: true
+dfp_flow_all
+```
+
+*Example calculation:* The last row for retrospective is obtained by using the proportion left from BPC after filtering (59/542) and multiplying by the number of main GENIE cases (3651).  (59/542)*3651 ~ = 397.
+
+### EMERGE
+
+Emerge has additional criteria for surgical resection and recurrence.
+
+```{r}
+#| include: true
+dfp_flow_emer
+```
+
+
+### COPERNICUS (B)
+
+COPERNICUS (B) adds a requirement for second line Carbo/Pem, and the ECOG baseline is relative to this second line therapy.
+
+```{r}
+#| include: true
+dfp_flow_cop_b
+```
+
+*Note:* Several of the 2L Carbo/Pem regimens included osimertinib as well.
+
+## High gain changes to consider
+
+Some changes which could increase the numbers considerably:
+
+- Allowing Osi use to be 2L could increase all cohort sizes by about 100% (see below).
+- Ignoring ECOG, or allowing ECOG scores of 2, or collecting it in the prospective case, could increase the cohorts by about 50%. 
+- Allowing additional EGFR mutations in this class (e.g. p.G719X or p.T790M) could increase the cohort size 10-20%.
+
+## Definitions and decisions
+
+The following bullets state how we defined each study criterion in the context of GENIE data.  
+
+- **EGFR L858R or exon 19 inframe del (ever)** - Using the mutation data submitted to genie (MAF level), flag patients with either `HGVSp_Short = p.L858R` or with an exon 19 mutation with `Consequence` indicating an inframe deletion on EGFR.
+- **Advanced or metastatic NSCLC** Participants were flagged as being in an advanced or metastatic state when either one of the following events occurred:
+  - Diagnosed with Stage III or IV cancer NSCLC.
+  - Metastasis location recorded anytime after diagnosis (mostly by imaging).
+- **Line of therapy** A regimen used after reaching the advanced or metastatic state.  We filter out consecutive repeats.  For example, a patient with 1L GemCarbo cannot have a 2L GemCarbo.  The 1L is the first regimen used in that state, 2L is second, etc.
+  - A Carbo/Pem regimen was defined to be any regimen that had both.  For example, a regimen with Carboplatin, Pembrolizumab, Pemetrexed Disodium would count.
+- **Baseline ECOG value of 0/1** Sites submit both ECOG and Karnofsky scores.  We convert any Karnofsky scores to ECOG (https://oncologypro.esmo.org/oncology-in-practice/practice-tools/performance-scales) and take the most recent score before the indexing event.  If a participant has no scores before the index event then they do not meet the criterion.
+- **Surgical Resection** - Any pathology procedure labelled a "Surgical Excision" and occurred before the Osi use counts. 
+- **Disease Recurrence** To have a recurrence we're looking for a series of three events:
+  1. Diagnosis of advanced/metastatic disease.
+  2. After that, at least one radiology or medical oncology note showing "No evidence of cancer".
+  3. After that, at least one radiology or medical oncology note showing evidence of cancer.
+  - Any day with conflicting radiology and med onc notes (e.g. one says cancer and another says no cancer) are ignored.
+
+
+
+The most precise/accurate definition for all the steps (especially which variables are used) can be always be found in the code (https://github.com/Sage-Bionetworks/genie-project-requests/tree/main/2024-04-30_wu_egfr_nsclc).
+
+## Osimertinib, Lines of therapy
+
+Using the line of therapy definition above, the following table shows the number of participants who had an osimertinib-containing regimen in each line of therapy (truncated after 5th line):
+
+```{r}
+#| include: true
+dft_lot_osi_adv_met %>% 
+  filter(str_detect(regimen_drugs, "Osimer")) %>% 
+  count(lot) %>%
+  filter(lot <= 5) %>%
+  rename(`Line of therapy` = lot,
+         `Pts. with Osi in line` = n) %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+We are pointing this out because first line was not overwhelmingly common for Osi.  If there is room to expand that to include other regimens, the sample size could obviously be increased.
+
+One other way to show this:  The following table shows the most common choices for first/second/third line therapy from the cohort who made it to "Osi in adv/met setting" above:
+
+```{r}
+#| include: true
+dft_lot_osi_adv_met %>%
+  rename(line_therapy = lot) %>%
+  get_lot_most_common_2(.) %>%
+  display_lot_most_common(.) %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+
+  
+
+

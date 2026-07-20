@@ -1,0 +1,236 @@
+---
+title: "GENIE BPC simulation"
+subtitle: "Motivated by breast cancer metastasis"
+author: "Alex Paynter"
+date: "2023 Aug 23"
+format: beamer
+execute:
+  echo: false
+  include: false
+  message: false
+  warning: false
+  fig-height: 4
+  fig-width: 6
+execute-dir: project
+---
+
+
+```{r}
+library(fs); library(here); library(purrr)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source)
+```
+
+```{r}
+pal_vib <- khroma::color("vibrant")
+```
+
+
+```{r}
+sim_sum_all <- readr::read_rds(
+  file = here('sim', 'combined_evals', 'sim_sum_all.rds')
+)
+sim_sum_avg <- readr::read_rds(
+  file = here('sim', 'combined_evals', 'sim_sum_avg.rds')
+)
+```
+
+
+```{r}
+#| include: true
+
+gg_abs_bias <- plot_one_sim_metric(
+  dat_sim_all = sim_sum_all,
+  dat_sim_avg = sim_sum_avg,
+  x_var = "avg_abs_bias",
+  x_lab = "Average absolute bias (one point = one sim)"
+)
+
+gg_bias <- plot_one_sim_metric(
+  dat_sim_all = sim_sum_all,
+  dat_sim_avg = sim_sum_avg,
+  x_var = "avg_bias",
+  x_lab = "Average bias (one point = one sim)"
+)
+
+gg_abs_bias_no_cox <- plot_one_sim_metric(
+  dat_sim_all = filter(
+    sim_sum_all, 
+    !(analysis_method_f %in% "univar. Cox models")
+  ),
+  dat_sim_avg = filter(
+    sim_sum_avg,
+    !(analysis_method_f %in% "univar. Cox models")
+  ),
+  x_var = "avg_abs_bias",
+  x_lab = "Average absolute bias (one point = one sim)"
+)
+
+gg_bias_no_cox <- plot_one_sim_metric(
+  dat_sim_all = filter(
+    sim_sum_all, 
+    !(analysis_method_f %in% "univar. Cox models")
+  ),
+  dat_sim_avg = filter(
+    sim_sum_avg,
+    !(analysis_method_f %in% "univar. Cox models")
+  ),
+  x_var = "avg_bias",
+  x_lab = "Average bias (one point = one sim)"
+)
+```
+
+
+## Setup
+
+- Genomic covariates:  The actual genomic covariates for the breast cancer patients who developed distant metastasis.  This is 80 columns after the filtering for OncoKB, requiring positives, etc.
+- Random generation of outcomes and effects:
+  - Generate truncation times (Weibull, independent)
+  - Generate coefficients for each column.  We assume a **sparse truth** where 80% of covariates have no direct on survival.  For the other 20%, we generate a random Cox (hazard ratio) coefficient.
+  - Generate survival times using the coefficients in the step above.
+  - Generate censoring times (uniform, independent)
+  
+## Setup (cont.)
+
+- Each time we do this we end up with about 600 people who were truly observed (not truncated).  
+- This is down-sampled to n=500 and n=80 to study the case where $n>>p$ and $n \approx p$.  These are the two scenarios I'll show results for.
+- Note that we don't even cover the most challenging case of $p>>n$, but it may come up as we add covariates or 
+
+## Evaluations
+
+- Bias:  How far off were our models on the covariates which have true effects?
+- Sensitivity and specificity:  How often are true effects identified?  How often are true negatives rejected?
+
+Our goal is finding a model that can control false positives, get some true effects and give reasonably reliable coefficient estimates.
+
+
+## Models
+
+All models are adjusted for left truncation in the same way (assuming independence).  All models are Cox models. None of these things differentiates the approaches or explains any results.
+
+- univariate Cox models:  For each covariate run a standard univariate cox model. 
+- Lasso (one time):  Lasso with 5-fold cross validation.  The $\lambda$ value which minimizes the penalty gives us the settings for our estimates.
+- Lasso (boot):  Bootstrap the data and run the LASSO as above many times.  The frequency with which a covariate is selected is it's **stability**.  The estimates are just the average of the estimates in each bootstrap resample.
+
+# Results
+
+## Bias
+
+```{r}
+#| include: true
+
+cowplot::plot_grid(
+  gg_bias,
+  gg_abs_bias,
+  ncol = 1
+)
+```
+
+## Bias (univariate excluded)
+
+```{r}
+#| include: true
+
+cowplot::plot_grid(
+  gg_bias_no_cox,
+  gg_abs_bias_no_cox,
+  ncol = 1
+)
+```
+
+
+
+```{r}
+gg_sens_spec <- ggplot(
+  data = sim_sum_all,
+  aes(
+    x = spec_at_thresh, 
+    y = sens_at_thresh,
+    color = analysis_method_f
+  )
+) + 
+  geom_jitter(alpha = 0.4, size = 0.25, shape = 16,
+              height = 0.01, width = 0.01) +   
+  geom_point(
+    data = sim_sum_avg,
+    size = 3, alpha = 1
+  ) +
+  facet_wrap(vars(n_lab)) + 
+  theme_bw() + 
+  scale_color_vibrant(
+    name = NA
+  ) +
+  coord_cartesian(xlim = c(1,0), ylim = c(0,1)) +
+  theme(
+    legend.position = "bottom"
+  ) + 
+  labs(
+    x = "Specificity (=1-FPR, note axis direction)",
+    y = "Sensitivity"
+  )
+    
+```
+
+## Sensitivity and Specificity
+
+Shown at decision boundary thresholds of p = 0.05, $\lambda = \lambda_{min}$ and stability = 0.2 respectively.
+
+```{r}
+#| include: true
+
+gg_sens_spec
+       
+```
+
+
+
+```{r}
+gg_abs_bias_auc <- ggplot(
+  data = sim_sum_all,
+  aes(
+    x = auc, 
+    y = avg_abs_bias, 
+    color = analysis_method_f
+  )
+) + 
+  geom_point(alpha = 0.05) +   
+  geom_point(
+    data = sim_sum_avg,
+    size = 5, stroke = 1, alpha = 1, shape = 4
+  ) +
+  facet_wrap(vars(n_lab)) + 
+  theme_bw() + 
+  scale_color_vibrant() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+## Conclusions
+
+- Bias is fatally flawed with Cox univariate models.  This can't be fixed with multiple testing correction (though specificity could be increased that way at the cost of sensitivity)
+- Adding a bootstrap to the LASSO did not substantively differ from doing the LASSO once on bias, sensitivity or specificity.  Either could be justified on those grounds.
+  - The main advantage is that it's not as random.
+- On the bootstrapped LASSO, the stability parameter giving roughly the same sensitivity and specificity as the other models was way lower than expected (~0.2).  
+  - We could define variables as being "stably selected" at a threshold if we wanted to.
+  
+## Other models
+
+There are other models that solve the dependence of the LASSO on the fold splitting.  Some worth exploring are:
+
+- LOOCV with Lasso.  Expected to be less biased, worse at selection, but it's completely deterministic.
+- Stability selection (https://arxiv.org/abs/0809.2932v2)
+
+I would only recommend changing for our current paper if one of these blows the others out of the water.
+
+# Discarded slides
+
+## Bias vs AUC
+
+```{r}
+#| include: true
+gg_abs_bias_auc
+```
+
+
+
+

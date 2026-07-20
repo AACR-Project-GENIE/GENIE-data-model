@@ -1,0 +1,2002 @@
+---
+title: "[3] Off-Label & Off-Guideline Project"
+subtitle: "Main results, explorations"
+author: "Alex Paynter"
+date: "`r format(Sys.Date(), '%d %b %Y')`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 4
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+
+
+```{r}
+library(fs); library(purrr); library(here);
+purrr::walk(.x = fs::dir_ls(here("R")), .f = source)
+```
+
+```{r}
+gdtools::register_gfont('Roboto')
+set_flextable_defaults(
+  font.size = 10,
+  theme_fun = theme_booktabs,
+  font.family = 'Roboto'
+)
+
+
+dt_wrapper <- function(x, font.size = '10pt') {
+  DT::datatable(
+    x,
+    style = "bootstrap4",
+    fillContainer = F,
+    options=list(
+      initComplete = htmlwidgets::JS(
+        "function(settings, json) {",
+        paste0("$(this.api().table().container()).css({'font-size': '", font.size, "'});"),
+        "}")
+    ) 
+  )
+}
+    
+```
+
+
+## Introduction
+
+This is a working document for analyses related to the Off-label & Off-guideline manuscript chaired by Jeremy Warner.
+
+You may notice that this report starts on chapter 3 - a bit unusual.  Chapters 1 and 2 were originally:
+
+- **Chapter 1** - Cohort information.  This is now a separate report showing all the filtering steps, and how much of the data is removed with each one.  Generally we removed things that made the analysis more difficult, like people with multiple cancers, Canadian patients, any trial drug, etc.   We also removed any drug with a first global approval before Jan 1, 1997, as these labels tend not to be updated as use expands to new conditions.
+- **Chapter 2** - Lines of therapy.  We dropped this because it's fairly hard and may not have much payoff.
+
+All this code can be brought back if needed, but it was removed for concision.
+
+
+```{r}
+dft_all_cases <- readr::read_rds(
+  here('data', 'no_ca_seq_filter', 'clin_dat_wide.rds')
+)
+
+dft_cohort_cases <- readr::read_rds(
+  here('data', 'cohort', 'clin_dat_wide.rds')
+)
+
+```
+
+
+```{r}
+# need to load the crosswalks so we can report them out:
+dft_cw_condition <- readr::read_rds(
+  here('data', 'warner_materials', 'cw_condition.rds')
+)
+dft_cw_drug <- readr::read_rds(
+  here('data', 'warner_materials', 'cw_drug.rds')
+)
+dft_ind_mapped <- readr::read_rds(
+  here('data', 'warner_materials', 'indications_mapped.rds')
+)
+```
+
+
+```{r}
+# Data on drug/indication links:
+dft_hdrug_det <- readr::read_rds(
+  here('data', 'linked_approvals', 'hdrug_determinations.rds')
+)
+
+dft_poss_app <- readr::read_rds(
+  here('data', 'linked_approvals', 'possible_approvals.rds')
+)
+
+# We look at this below to keep track of with cases we want to cover better:
+dft_simple_with_tests <- readr::read_rds(
+   here('data', 'linked_approvals', 'simple_with_tests.rds')
+)
+dft_simple_biom_tests <- readr::read_rds(
+   here('data', 'linked_approvals', 'simple_biom_tests.rds')
+)
+
+```
+
+
+```{r}
+# scraped data on capecitabine:
+dft_nccn_sum_panc <- readr::read_rds(
+  here('data', 'guideline_parse', 'nccn_panc_capecitabine_sum.rds')
+)
+dft_nccn_sum_colon <- readr::read_rds(
+  here('data', 'guideline_parse', 'nccn_colon_cape_sum.rds')
+)
+dft_nccn_sum_rectal <- readr::read_rds(
+  here('data', 'guideline_parse', 'nccn_rectal_cape_sum.rds')
+)
+
+dft_gen_mark <- readr::read_rds(
+  here('data', 'no_ca_seq_filter', 'genomic_sum.rds')
+)
+
+dft_hdrug_conmed <- readr::read_rds(
+  here('data', 'cohort', 'hdrug_with_conmeds.rds')
+)
+
+js_olu_cat_explain_tree <- readr::read_rds(
+  file = here('data', 'linked_approvals', 'js_tree_olu_cat.rds')
+)
+
+```
+
+
+
+```{r}
+gg_step_cohort_n <- readr::read_rds(
+  here('data', 'linked_approvals', 'stepwise',
+       'gg_step_cohort_n.rds')
+)
+gg_step_cohort_prop <- readr::read_rds(
+  here('data', 'linked_approvals', 'stepwise',
+       'gg_step_cohort_prop.rds')
+)
+
+dft_stepwise_new_olu <- readr::read_rds(
+  here('data', 'linked_approvals', 'stepwise',
+       'stepwise_new_off_label.rds')
+)
+dft_stepwise <- readr::read_rds(
+  here('data', 'linked_approvals', 'stepwise',
+       'stepwise_dat.rds')
+)
+       
+# actually don't need any of the other stepwise stuff just yet.
+```
+
+
+
+
+## Ch 3 - Joining exposures to indications
+
+### R3.0 Linkage Strategy
+
+To generate a list of potential approvals we will join two datasets:
+
+- **HemOnc.org extract** - Jeremy Warner's indications sheet, which lists about 3000 rows of approvals.
+- **GENIE BPC data** The regimen BPC data, reshaped to be one row per drug rather than one row per regimen.  Again, see the report on filtering for the reductions in this dataset. 
+
+The concepts we are joining on are:
+
+- HemOnc `condition` is mapped to BPC `cohort`.
+- HemOnc `component` is mapped to BPC `agent`.  `agent` is a reshape of drug names from the `regimen_drugs` column.
+
+The text strings representing the same concepts in these sheets is slightly different, so that brings us to our crosswalks.
+
+#### Crosswalk: Conditions
+
+```{r}
+#| include: true
+dft_cw_condition %>%
+  flextable(.) %>% 
+  autofit(.)
+```
+
+All other `condition` entries from the Warner list are unmapped/unused.  The full list of unused conditions is in an appendix.
+
+#### Crosswalk: Component (drug)
+
+Reminder: `agent` is directly pulled GENIE BPC's `regimen_drugs` after splitting up the drugs.  `component` is from Warner's indications sheet.
+
+```{r}
+#| include: true
+dft_cw_drug %>%
+  select(component, agent, agent_map_type) %>%
+  dt_wrapper(.)
+```
+
+Notes:
+
+- `agent_map_type` is just a short description of the strategy I used to make the link.  The levels are:
+  - `exact`: The strings were a perfect (case-ignoring) match.
+  - `trimmed`:  After trimming common suffixes from the BPC data (like "sulfate", "acetate") the strings were a perfect match.
+  - `manual`:  Manual link.  We discussed these in meetings.
+  
+
+
+
+```{r}
+vec_bpc_drugs <- dft_hdrug_det %>%
+  pull(agent) %>%
+  unique
+
+vec_ind_drugs <- dft_ind_mapped %>%
+  filter(mapped_agent %in% vec_bpc_drugs) %>%
+  pull(mapped_agent) %>%
+  unique
+
+prop_uses_covered <- dft_hdrug_det %>%
+  mutate(
+    drug_in_ind = agent %in% vec_ind_drugs
+  ) %>% 
+  summarize(
+    prop_uses_covered = mean(drug_in_ind, na.rm = T)
+  ) %>%
+  pull(prop_uses_covered) 
+
+
+vec_bpc_drugs_not_mapped <- vec_bpc_drugs[!(vec_bpc_drugs %in% vec_ind_drugs)] %>% 
+  sort %>%
+  paste(., collapse = ", ")
+
+```
+
+#### Crosswalk success
+
+- Of the `r length(vec_bpc_drugs)` unique drugs in our post-filtered BPC cohorts, `r n_pct_str(length(vec_ind_drugs %in% vec_bpc_drugs), length(vec_bpc_drugs), show_d = F)` were found in the indications sheet after mapping.
+  - The agents which we couldn't map to anything in the indications sheet are: `r vec_bpc_drugs_not_mapped`.
+- Of the `r nrow(dft_hdrug_det)` exposures (one person using a drug for one block of time), `r round(prop_uses_covered*100, 3)`% involve a drug which was successfully mapped to a drug in the indications sheet.
+
+
+### R3.1 Definitions
+
+We define an **exposure** to be one person using a drug for one block of time.  This is reliant on curation in BPC, so a block of time is pinned to how regimens are curated, but the point to keep in mind is that person X can have multiple exposures to drug Y.
+
+Our definition of an on-label exposure is currently any use of a drug which has a matching row in the indications sheet that meets the following criteria:
+
+1. A matching indication exists, meaning:
+
+  - Regulator for the approval is FDA.
+  - Condition maps to the BPC cohort of the exposure.
+  - Component maps to the BPC agent (regimen drug) of the exposure.
+  
+2. If the indication a requires metastatic state, the drug use started after a metastatic diagnosis.
+
+3. If the indication requires concomitant medications, all of those meds overlap with the exposure under study by at least one day.  This includes exposures required to be issued as monotherapy (we require they overlap with nothing).
+
+4. The drug start date is after the approval date for the drug.  Notes:
+
+  - We do not have exact dates in GENIE BPC.  We calculate the maximum drug start date given a participant's `birth_year` (whole years) and the interval from birth date to start of the drug (an exact number of days) by assuming they were born on Dec 31.
+  - Assuming people were born as late as possible is conservative in that we consider the fewest number possible off-label by date.
+
+**Off-label** use is a drug use which can't be verified as on-label according to the definition above under any indication in our sheet.
+
+We assign a "type" of off label use for each drug.  The reasons are the following:
+
+- **No indications found**: The drug isn't approved for the cancer type.
+- **Specific req. not met**: Specific requirements in the label were not met.  For example, maybe the label required metastatic or concomitant cisplatin use in this cancer type (and the exposure did not come with those).
+- **Started before approval**: All the specific requirements were met, but they started the drug before it was approved.
+
+Each exposure is categorized according to the indication which made it the furthest in this list.  For example, suppose a capecitabine use matched to two indication rows.  One of the indications did not work because the patient was not metastatic, and one of them passed all checks except for being started before approval.  This exposure would be categorized as "Started before approval".  
+
+We posed the question "are off label uses good or bad?".  I think this question can be separated into "was it bad for the patient to get this drug?" and "does this use say something bad about the clarity of our system of drug approvals?" Unforunately I think our answers are case-specific.  I can think of examples of both good and bad to both questions in all three categories.  But I think meeting all the requirements the FDA settled on, but just being too early (Started before approval) seems meaningfully distinct to me, and less likely to represent a patient harm.  This is why I've kept this as its own category.
+
+Section 3.4 shows a tree detailing all the checks going into "Specific req. not met".
+
+
+
+```{r}
+
+# Just a rename:
+dft_hdrug_det %<>% 
+  mutate(off_label_type = failure_type_f)
+
+dfp_olu_type_cohort <- dft_hdrug_det %>%
+  filter(!is.na(off_label_type)) %>%
+  tabyl(off_label_type, cohort) %>%
+  adorn_totals(where = "both") %>%
+  as_tibble(.)
+
+# little hacky but I think it'll work:
+dft_exposures <- tabyl(dft_hdrug_det, cohort) %>% 
+  adorn_totals(.)
+
+vec_olu_denoms <- dft_exposures$n
+
+col_totals_with_pct <- dfp_olu_type_cohort %>%
+  filter(off_label_type %in% "Total") %>%
+  select(Bladder:Total) %>%
+  unlist
+
+col_totals_with_pct <- paste0(
+  col_totals_with_pct, " (",
+  round(col_totals_with_pct / vec_olu_denoms * 100, 0), "%)"
+)
+
+dfp_olu_type_cohort %<>% mutate(across(.cols = everything(), .fns = as.character))
+
+# real fragile:
+dfp_olu_type_cohort[4,2:ncol(dfp_olu_type_cohort)] <- as.list(col_totals_with_pct)
+
+
+
+dfp_olu_type_cohort %<>%
+  # arrange(., desc(off_label_type %in% "Total")) %>%
+  rename(` ` = off_label_type) %>%
+  flextable(.) %>%
+  add_header_row(
+    values = c("", paste0("k=", vec_olu_denoms)),
+    top = F
+  ) %>%
+  autofit(.) %>%
+  hline(part = "header", i = 1, border = fp_border_default(width = 0))
+  
+  
+```
+
+
+```{r}
+drug_cohort_sum <- dft_hdrug_det %>%
+  get_cohort_drug_summary %>%
+  limit_drug_sum %>%
+  # trim out some of the salt names and such
+  mutate(agent = drug_name_display_trim(agent)) 
+
+```
+
+
+### *R3.2 OLU - high level
+
+The high level summary based on "reasons" was removed in Nov 2024 and replaced by a summary based on drugs.  The reason is that the drugs in the exposures are concrete and known to the community, while reason categories we made up are fragile, esoteric and generally hard to compare to other work.
+
+The following table shows the number of total off label uses out of the number of exposures (Total).  The columns to the right of the total are the agents with the highest number of off label exposures in that cohort.  
+
+```{r}
+#| include: true
+drug_cohort_sum %>%
+  drug_cohort_flextable(.) %>%
+  fontsize(size = 8, part = "all") %>%
+  autofit(.) 
+```
+
+
+
+
+
+
+
+
+
+```{r}
+# A few holdovers from other stuff.
+dft_hdrug_cohort <- dft_cohort_cases %>%
+  select(cohort, hdrug) %>%
+  unnest(hdrug)
+
+dft_hdrug_fxd <- dft_hdrug_cohort %>%
+  group_by(record_id, ca_seq) %>%
+  mutate(
+    dx_first_drug_use_int = min(dx_drug_start_int, na.rm = T)
+  ) %>%
+  ungroup(.)
+```
+
+
+
+```{r}
+dft_off_label_uses <- count_off_label(
+  dft_hdrug_det,
+  group_vars = c('cohort', 'agent', 'off_label_type')
+) %>%
+  filter(n_off_label > 0) %>%
+  select(-c(prop_off_label)) # makes no sense now.
+
+dft_hdrug_det_first_day <- dft_hdrug_fxd %>%
+  filter_drugs_first_x_days(
+    ., 
+    x = 0, # within 0 days to start.
+    var_index_time = 'dx_first_drug_use_int'
+  ) %>%
+  select(cohort, record_id, ca_seq, regimen_number, drug_number) %>%
+  left_join(
+    .,
+    dft_hdrug_det,
+    by = c('cohort', 'record_id', 'ca_seq', 'regimen_number', 'drug_number')
+  )
+    
+dft_off_label_uses_first_drug <- dft_hdrug_det_first_day %>%
+  # This drops the excluded drugs from link_drugs_indications.R
+  filter(agent %in% dft_hdrug_det$agent) %>%
+  count_off_label(
+    ., group_vars = c('cohort', 'agent', 'off_label_type')
+  ) %>%
+  filter(n_off_label > 0) %>%
+  select(-c(prop_off_label)) # makes no sense now.
+
+```
+  
+
+
+
+
+
+
+
+
+
+### *R3.3 OLU detailed
+
+Above we presented three <span style="color:#E63746;">broad categories</span> for off label use, this section shows what happens when each <span style="color:#07C592;">individual check</span> is added.  Here is a tree showing how these relate:
+
+```{r}
+#| include: true
+#| fig-height: 7
+js_olu_cat_explain_tree
+```
+
+Specific notes:
+
+- "test_met" Test that the patient was confirmed metastatic on the day they started this drug.
+- "test_with_X" Test that the exposure overlapped with X by at least one day (iff X is required for the indication).  
+- "test_with_nothing" This is a monotherapy check.
+
+Recall that we categorize participants according to the indication that makes it past the highest number of tests.  The graphs below will show how many off label exposures we have after each test was added (the last row is the total stated above).  Big horizontal jumps indicate that requirement was the deepest barrier to being on-label for a large number of people.  That gives us a sign of something to pursue further below.
+
+```{r}
+#| include: true
+#| fig-height: 9
+gg_step_cohort_n
+```
+
+
+**Notes:**
+
+A few (other than the first and last check) that jump out to me:
+
+- Breast: with exemestane.
+- Pancreas: with gemcitabine, with FOLF.
+- NSCLC: with carboplatin and with cisplatin, with dabrafenib.
+- CRC: with folfiri (weak).
+- Prostate: metastatic.
+- All cohorts had a jump at "test_date_definite"
+
+
+The same graph can be shown using proportions too, just for completeness:
+
+```{r}
+#| include: true
+#| fig-height: 9
+gg_step_cohort_prop
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+dft_off_label_cohort_agent <- count_off_label(
+  dft_hdrug_det,
+  group_vars = c('cohort', 'agent')
+) %>%
+  filter(n_off_label > 0) %>%
+  select(-c(prop_off_label))
+```
+
+### *R3.4 OLU list - Cohort/agent
+
+The following table shows the number of off label uses by {cohort, agent}:
+
+```{r}
+#| include: true
+dft_off_label_cohort_agent %>%
+  select(cohort, agent, n_off_label) %>%
+  arrange(desc(n_off_label)) %>% # good default.
+  dt_wrapper(.)
+```
+
+
+
+
+
+
+
+
+```{r}
+#| include: true
+dt_off_label <- dft_off_label_uses %>%
+  select(cohort, agent, off_label_type, n_off_label) %>%
+  arrange(desc(n_off_label)) %>% # good default.
+  mutate(
+    # goal here is enabling quicker searching.
+    off_label_type = str_replace_all(
+      as.character(off_label_type),
+      "[:blank:]", "_"
+    )
+  ) %>%
+  dt_wrapper(.)
+```
+
+### *R3.5 OLU list - Cohort/agent/type
+
+The following table shows rows grouped by {cohort, agent, off_label_type}, splitting the table rows above by type.  For example, a row might show the number of off label uses of capecitabine in the pancreatic cohort, which were due to using a drug before the approval date.
+
+```{r}
+#| include: true
+dt_off_label
+```
+
+**Note:** We had a version of this with only the first drug used as a sanity check.  I think we're past that, so I've removed it, but it can be brought back if you miss it.
+
+
+
+
+
+```{r}
+# Add in the step where the exposure was made off label.
+# Could put this into hdrug det at an earlier stage if desired.
+dft_hdrug_det <- dft_stepwise_new_olu %>% 
+  select(step, new_off_label) %>%
+  unnest(new_off_label) %>%
+  rename(step_lost = step) %>%
+  select(-valid_ind_exists) %>% 
+  left_join(
+    dft_hdrug_det,
+    .,
+    by = c('cohort', "record_id", 'ca_seq', 'regimen_number', 'drug_number', 'agent'),
+    relationship = "one-to-one"
+  )
+  
+dft_off_label_cohort_agent_detail <- count_off_label(
+  dft_hdrug_det,
+  group_vars = c('cohort', 'agent', 'step_lost')
+) %>%
+  filter(n_off_label > 0) %>%
+  select(-c(prop_off_label))
+```
+
+### *R3.6 OLU list - Cohort/agent/step
+
+One more variant - here each row is defined by the cohort, agent and the step (or test) where the exposure was determined to be off label.  This means that all potential indications failed to pass once this test was added.
+
+
+```{r}
+#| include: true
+dft_off_label_cohort_agent_detail %>%
+  select(cohort, agent, step_lost, n_off_label) %>%
+  arrange(desc(n_off_label)) %>% # good default.
+  dt_wrapper(.)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--
+
+```{r}
+dt_off_label_first_drug <- dft_off_label_uses_first_drug %>%
+  select(cohort, agent, off_label_type, n_off_label) %>%
+  arrange(desc(n_off_label)) %>% # good default.
+  mutate(
+    # goal here is enabling quicker searching.
+    off_label_type = str_replace_all(
+      as.character(off_label_type),
+      "[:blank:]", "_"
+    )
+  ) %>%
+  dt_wrapper(.)
+```
+
+### R3.4 OLU, sortable, first drug
+
+The following table is the same as the previous one, except we limit to only the first day of drug use by each person:
+ 
+```{r}
+#| include: false
+dt_off_label_first_drug 
+```
+
+
+-->
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+## Ch 4 - OLU explorations
+
+```{r}
+dft_reg_num_off_label <- dft_hdrug_det %>%
+  group_by(cohort, record_id, regimen_number) %>%
+  summarize(
+    any_off_label = as.numeric(any(valid_ind_exists %in% F)),
+    .groups = "drop"
+  )
+  # ) %>%
+  # group_by(regimen_number) %>%
+  # summarize(
+  #   n_off = sum(any_off_label),
+  #   n_total = n(),
+  #   .groups = "drop"
+  # ) %>%
+  # mutate(
+  #   prop_off_label = n_off / n_total
+  # )
+
+dft_reg_num_off_label_sum <- dft_reg_num_off_label %>%
+  group_by(cohort, regimen_number) %>%
+  summarize(
+    prop_off_label = mean(any_off_label, na.rm = T), 
+    n = n(),
+    .groups = "drop"
+  )
+
+gg_smooth <- ggplot(
+  dft_reg_num_off_label,
+  aes(y = any_off_label, x = regimen_number, color = cohort)
+) + 
+  geom_smooth(se = F) + 
+  geom_point(
+    data = dft_reg_num_off_label_sum,
+    aes(y = prop_off_label, size = n)
+  ) + 
+  scale_x_continuous(
+    breaks = seq(1, 101, by = 10),
+    name = "BPC Regimen number"
+  ) +
+  scale_y_continuous(
+    name = "Proportion",
+    breaks = seq(0, 100, by = 10) / 100,
+    labels = label_percent(),
+    expand = c(0,0)
+  ) + 
+  labs(title = "Proportion of subjects with any off label use (penalized spline)") + 
+  theme_bw() + 
+  theme(
+    axis.title = element_markdown(angle = 0)
+  ) +
+  scale_color_vibrant() + 
+  scale_size(range = c(0.25, 3)) +
+  guides(size = "none")
+
+gg_smooth
+
+gg_data_density <- ggplot(
+    dft_reg_num_off_label,
+    aes(x = regimen_number)
+) + 
+  geom_histogram(binwidth = 1, fill = "#83781B") +
+  scale_x_continuous(
+    breaks = seq(1, 101, by = 10),
+    name = "BPC Regimen number"
+  ) +
+  scale_y_continuous(
+    name = "Obs count",
+  ) + 
+  theme_bw()
+
+gg_comb <- cowplot::plot_grid(
+  gg_smooth,
+  gg_data_density,
+  ncol = 1,
+  rel_heights = c(70,30),
+  align = 'v'
+)
+  
+gg_comb
+
+```
+
+
+### R4.1 OLU and regimen number
+
+We observed previous that first drugs seem to be on label more frequently and hypothesized that later regimens may have more off label use.  The following graph is a rough expansion on that idea:
+
+```{r}
+#| include: true
+gg_comb
+```
+
+**Notes:**
+
+- Size of the dots is the number of observations we have at that regimen number (after all of our filtering).
+- Proportions of regimens containing some off label use and the trend over time vary a lot by cohort.
+- The most unusual group is pancreas, which has a high off label use proportion even for first line therapies.
+
+
+
+```{r}
+dft_poss_app %>% glimpse
+
+# We just re-add the checks:
+dft_hdrug_det_anti_conserv <- dft_poss_app %>%
+  add_check_met(.) %>%
+  add_check_date_possible(.) %>%
+  add_check_multiple_tests(
+    dat_poss_app = .,
+    # not strictly needed...
+    test_cols_to_include = c(
+      'test_ind_exists',
+      'test_met',
+      'test_date_possible'
+    )
+  ) %>%
+  summarize_possible_approvals_no_fail_type(.)
+
+dft_date_compare <- left_join(
+  (dft_hdrug_det %>%
+     filter(!valid_ind_exists) %>%
+     count(cohort, name = "conservative")),
+  (dft_hdrug_det_anti_conserv %>%
+     filter(!valid_ind_exists) %>%
+     count(cohort, name = "anti_conserv")),
+  by = "cohort"
+)
+
+
+```
+
+
+### R4.2 Date assumptions
+
+**Note:  This section needs to be repaired still after a code restructure.  Low priority**
+
+Previously we made the most conservative possible assumption on date of drug start.  That is, for each participant, we assumed that their birthday was the last day on their recorded `birth_year`.
+
+We calculated the maximally anti-conservative assumption too:  That they were born on Jan 1 of their `birth_year`.  The following table shows the number of off label uses by cohort when we make those two assumptions:
+
+```{r}
+#| include: true
+dft_date_compare %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+**Notes:**
+
+- Another way to think about the difference between these two columns that it's the number of people who used a drug within the first year of approval.  We can't be sure if it was before or after approval.
+- The subjects in the "fuzzy" period between our two assumptions would be costly to cure/query sites about.
+
+
+
+
+
+
+```{r}
+gg_panc_cape <- dft_hdrug_cohort %>%
+  filter(
+    cohort %in% "Pancreas",
+    agent %in% "Capecitabine"
+  ) %>%
+  group_by(record_id) %>%
+  arrange(drug_start_date_max) %>%
+  slice(1) %>%
+  ungroup(.) %>%
+  plot_drug_use_times(
+    .,
+    plot_title = "Pancreatic Capecitabine exposures",
+    # plot_subtitle = "Blue = First approval"
+  ) +
+  # Nobody had this in mind other than me :D 
+  # geom_vline(xintercept = ymd("2017-01-01"), color = "#ee3377") +
+  geom_vline(xintercept = ymd("2022-12-14"), color = '#177bc2') +
+  coord_cartesian(xlim = ymd(paste0(c(2000, 2023), "01-01")))
+
+
+gg_panc_all_drug <- dft_hdrug_cohort %>%
+  filter(
+    cohort %in% "Pancreas",
+  ) %>%
+  plot_drug_use_times(
+    .,
+    plot_title = "Pancreatic exposures (any drug)",
+  ) +
+  coord_cartesian(xlim = ymd(paste0(c(2000, 2023), "01-01")))
+
+
+
+```
+
+### R4.3 Drug use dates (select)
+
+#### R4.3.1 Pancreas, Capecitabine
+
+In our March 2024 meeting we discussed the surprising number of off label uses in the Pancreas cohort for Capecitabine.  One possible explanation is the guidelines and papers showing efficacy coming out well before 2022 (with at least one important abstract in Jan 2017, marked in red below).  The plot below shows the maximum possible start times for Capecitabine in the Pancreas cohort, limited to the first use in each participant.
+
+After seeing the results, we added a lower pane distribution for **all** drug uses (even those we're not considering as candidates for off-label use).  The point of this is to provide a comparator distribution for when subjects in this cohort were starting drugs overall.  
+
+```{r}
+#| include: true
+gg_panc_cape_and_all <- cowplot::plot_grid(
+  gg_panc_cape,
+  gg_panc_all_drug,
+  ncol = 1
+)
+
+gg_panc_cape_and_all
+```
+
+**Notes:**
+
+- At first glance, this looks hard to believe.  We have a bell shaped curve that shows no sensitivity at all to when the evidence or approval came out, and would roughly align with drug use for the cohort.
+- Relevant dates for this cohort:  Sequenced from 2013-2018, Locked on Dec 31, 2020.
+  - Sanity check:  Allowing 1 year for date uncertainty, we expect to have no drug start date "maximum" guesses before 2022.  This seems to be the case, which is good.
+- There is a convenient fact reassuring me:  The lock date for the cohort was Dec 31, 2020, so no observations should have been made after that date, and the drug was not approved until 2022.  Therefore, any recorded use of the drug is automatically off label. 
+
+
+
+
+```{r}
+gg_pros_olaparib <- dft_hdrug_cohort %>%
+  filter(
+    cohort %in% "Prostate",
+    agent %in% "Olaparib"
+  ) %>%
+  group_by(record_id) %>%
+  arrange(drug_start_date_max) %>%
+  slice(1) %>%
+  ungroup(.) %>%
+  plot_drug_use_times(
+    .,
+    plot_title = "Prostate Olaparib uses (first in each patient)",
+    plot_subtitle = "Blue = First FDA approval"
+  ) +
+  geom_vline(xintercept = ymd("2020-05-19"), color = "#33bbee") +
+  coord_cartesian(xlim = ymd(paste0(c(1994, 2023), "01-01")))
+
+gg_pros_all_drug <- dft_hdrug_cohort %>%
+  filter(
+    cohort %in% "Prostate"
+  ) %>%
+  plot_drug_use_times(
+    .,
+    plot_title = "Prostate ALL drug uses",
+  ) +
+  coord_cartesian(xlim = ymd(paste0(c(1994, 2023), "01-01")))
+```
+
+
+
+#### R4.3.2 Prostate, Olaparib
+
+The second most frequent cohort/drug combo which was taken before an approval was Prostate cancer + Olaparib.  I was motivated to look into this partially to see if the above plot could be a coding error.  Here is the distribution of start drug start times, with the distribution of start times for any drug as a comparison:
+
+```{r}
+#| include: true
+cowplot::plot_grid(
+  gg_pros_olaparib,
+  gg_pros_all_drug,
+  ncol = 1
+)
+```
+
+**Notes:**
+
+- Relevant dates:  The first approval of any kind for Olaparib was in 2014 (Ovarian cancer).  The prostate cancer cohort's lock date was 4/30/2021.
+- This looks slightly better than the Pancreas example above, with no uses before mid-2015, which makes me less supsicious about a coding error.
+- I'm still surprised the approval date appears to have no impact on use.
+
+
+
+
+
+
+```{r}
+gg_nsclc_ipili <- dft_hdrug_cohort %>%
+  filter(
+    cohort %in% "NSCLC",
+    agent %in% "Ipilimumab"
+  ) %>%
+  group_by(record_id) %>%
+  arrange(drug_start_date_max) %>%
+  slice(1) %>%
+  ungroup(.) %>%
+  plot_drug_use_times(
+    .,
+    plot_title = "NSCLC Ipilimumab uses (first in each patient)"
+    # removing this since it's in another graph.
+    # plot_subtitle = "Blue = First FDA approval"
+  ) +
+  # geom_vline(xintercept = ymd("2020-05-15"), color = "#33bbee") +
+  coord_cartesian(xlim = ymd(paste0(c(2002, 2022), "01-01")))
+
+gg_nsclc_all_drug <- dft_hdrug_cohort %>%
+  filter(
+    cohort %in% "NSCLC"
+  ) %>%
+  plot_drug_use_times(
+    .,
+    plot_title = "NSCLC ALL drug uses",
+  ) +
+  coord_cartesian(xlim = ymd(paste0(c(2002, 2022), "01-01")))
+```
+
+#### R4.3.3 NSCLC + Ipilimumab
+
+One more, skipping over the pembro cases which could be attributed to a TMB indication unrelated to cancer type: 
+
+```{r}
+#| include: true
+cowplot::plot_grid(
+  gg_nsclc_ipili,
+  gg_nsclc_all_drug,
+  ncol = 1
+)
+```
+
+**Notes**
+
+- This time it looks like 100% of the subjects who used the drug used it before the label update.
+- First FDA approval for lung cancer:  2020 May 15, first approval for any cancer (melanoma) 2011 March 25.
+
+
+### R4.4 Sites, OLU
+
+
+```{r}
+dft_panc_cases <- dft_all_cases %>%
+  filter(cohort %in% "Pancreas") %>%
+  select(ca_ind) %>%
+  unnest(ca_ind) %>%
+  mutate(site = infer_site_from_subject(record_id)) %>%
+  count(site, name = "panc_cohort_cases") %>%
+  filter(!(site %in% "UHN"))
+
+dft_panc_sites <- dft_hdrug_det %>%
+  mutate(site = infer_site_from_subject(record_id)) %>%
+  filter(agent %in% "Capecitabine" & cohort %in% "Pancreas") %>%
+  group_by(site) %>%
+  summarize(
+    n_pts_capecitabine = length(unique(record_id))
+  )
+
+dft_panc_cases <- left_join(
+  dft_panc_sites,
+  dft_panc_cases,
+  by = "site"
+) %>%
+  mutate(prop = n_pct_str(n_pts_capecitabine, panc_cohort_cases, show_d = T))
+
+
+```
+
+#### Pancreas + Capecitabine
+
+The following table shows how many patients used capecitabine (automatically off label) in the pancreatic cohort.  The denominator we use to estimate the percentage is the number of total patients in each cohort from that site:
+
+```{r}
+#| include: true
+
+dft_panc_cases %>%
+  select(site, `Cape. \ Cohort` = prop) %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+**Notes:**
+
+- Our hypothesis was that maybe this cohort of Capecitabine users was dominated by MSK, where we might expect more out-of-pocket payment.  This does not appear to be a strong effect, it's at all three sites and slightly more popular at MSK.
+
+
+
+
+
+
+
+```{r}
+dft_nccn_sum_panc %<>% 
+  mutate(
+    char_norm_match = n_text_matches / alpha_char_count,
+    word_norm_match = n_text_matches / word_count
+  )
+
+pal_cape_guide <- c('#c23917', '#177bc2', '#22856e')
+
+gg_nccn_panc_cape <- plot_guideline_str(
+  dat = dft_nccn_sum_panc,
+  y_var = 'char_norm_match',
+  plot_title = "String matches from PDF pancreas NCCN guidelines",
+)  +
+  scale_x_date(
+    date_breaks = '2 years',
+    date_labels = '%Y'
+  ) +
+  coord_cartesian(xlim = ymd(paste0(c(2000, 2023), "01-01"))) + 
+  geom_vline( 
+    xintercept = ymd('2005-01-01'), 
+    color = pal_cape_guide[1]
+  ) + 
+  annotate(
+    geom = "text", size = 4, color = pal_cape_guide[1],
+    x = ymd('2005-07-01'), y = 0.3 * 10^(-4), hjust = 0,
+    label = "First recommended"
+  ) +
+  geom_vline(
+    xintercept = ymd('2012-01-01'),
+    color = pal_cape_guide[3]
+  ) +
+  annotate(
+    geom = "text", size = 4, color = pal_cape_guide[3],
+    x = ymd('2012-07-01'), y = 0.3 * 10^(-4), hjust = 0,
+    label = "Widely recommended"
+  ) +
+  geom_vline( 
+    xintercept = ymd('2022-12-14'), 
+    color = pal_cape_guide[2]
+  ) +  
+  annotate(
+    geom = "text", size = 4, color = pal_cape_guide[2],
+    x = ymd('2022-07-01'), y = 0.9 * 10^(-4), hjust = 1,
+    label = "FDA approved"
+  )
+
+
+# ggsave(
+#   gg_nccn_cape,
+#   height = 4, width = 8,
+#   filename = here('output', 'img', '01_panc_cape_nccn_text_parse.pdf')
+# )
+
+
+
+
+```
+
+### *R4.5 Guidelines + Capecitabine
+
+*Credit:* Thanks to Jennifer Hoppe for compiling and organizing all the NCCN guidelines.  This took care of the majority of work needed to get here, greatly appreciated.
+
+#### Pancreas
+
+We discussed above the possibility that the NCCN guidelines could precede approvals and have an impact on the way people treat.  The following graph shows the number of mentions of "cape", which tend to be things like "Capecitabine" and "CapeOx".  I excluded "Capello", which is an author's name appearing in the references later on.  This is normalized by the number of alphabetic (not alphanumeric) characters in the guideline, to adjust somewhat for the massive expansion in their size over time.
+
+
+```{r}
+#| include: true 
+#| fig.height: 3
+gg_nccn_panc_cape
+```
+
+```{r}
+fig3 <- cowplot::plot_grid(
+  gg_panc_cape,
+  gg_panc_all_drug,
+  gg_nccn_panc_cape,
+  ncol = 1,
+  align = 'v',
+  rel_heights = c(0.3, 0.3, 0.4)
+)
+ggsave(fig3,
+       filename = here('output', 'manu', 'fig3', 'fig3-capecitabine-use-nccn.pdf'),
+       height = 5,
+       width = 7
+)
+```
+
+
+**Notes**
+
+- This was always intended to be a starting point to look more closely.  Here's what I found reading selectively:
+  - 2007 closer look:  My reading is they're saying you can use Capecitabine as second line thearpy in advanced disease.  A study pops up in the references.
+  - 2012 closer look:  Recommendations for use look expanded, adjuvant and neoadjuvant recommendations, and with radiation.  It also appears in flow charts now, and there's mentions of CapeOx and other combos.
+  - 2017 closer look:  Seems recommended for tons of things at this point, a phase 3 trial pops up in the references which I think many in the group remembered.
+- Even though guidelines may "explain" the use, it still seems interesting that they outpaced the approvals so dramatically.
+- Some of the very old guidelines didn't parse (need OCR).  Because the first two years that *did* parse show no mentions I'm not going to bother messing with those.
+- I also counted words and normalized that way.  The graphs have an extremely shape with alphabetic characters and words.
+- We did not exclude references.  To me it seems fine if we "double count" both characters and capecitabine mentions, since our goal is just showing when the guidelines started talking about capecitabine.
+
+
+
+
+
+
+```{r}
+dft_nccn_sum_colon  %<>% 
+  mutate(
+    char_norm_match = n_text_matches / alpha_char_count,
+    char_norm_capeox = n_matches_capeox / alpha_char_count,
+    word_norm_match = n_text_matches / word_count
+  )
+
+gg_nccn_colon_cape <- plot_guideline_str(
+  dat = dft_nccn_sum_colon,
+  y_var = 'char_norm_match',
+  plot_title = "String matches from NCCN PDF colon guidelines",
+) +
+  geom_vline( 
+    xintercept = ymd('2005-06-15'), 
+    color = pal_cape_guide[2]
+  ) +  
+  annotate(
+    geom = "text", size = 4, color = pal_cape_guide[2],
+    x = ymd('2005-06-15'), y = 0.9 * 10^(-4), hjust = 1,
+    label = "FDA approved"
+  )
+
+
+gg_nccn_colon_capeox <- plot_guideline_str(
+  dat = dft_nccn_sum_colon,
+  y_var = 'char_norm_capeox',
+  plot_title = "String matches from NCCN PDF colon guidelines",
+  plot_subtitle = "CapeOx strings only"
+) +
+  geom_vline( 
+    xintercept = ymd('2022-12-14'), 
+    color = pal_cape_guide[2]
+  ) +  
+  annotate(
+    geom = "text", size = 4, color = pal_cape_guide[2],
+    x = ymd('2022-12-14'), y = 0.9 * 10^(-4), hjust = 1,
+    label = "FDA approved"
+  )
+
+```
+
+#### Colon
+
+Colon and rectal are separate in the NCCN guidelines, so we'll look at both.  There was also a request to look at CapeOx strings separately due to the later approval of that therapy.
+
+```{r}
+#| include: true
+#| fig-height: 3
+gg_nccn_colon_cape
+gg_nccn_colon_capeox
+```
+
+**Notes**
+
+- There is a broad approval for metastatic **colorectal** cancer in 2001, with no conmed requirements.  I marked the first colon cancer approval here, but that may be wrong.
+
+
+
+
+
+
+
+```{r}
+dft_nccn_sum_rectal  %<>% 
+  mutate(
+    char_norm_match = n_text_matches / alpha_char_count,
+    char_norm_capeox = n_matches_capeox / alpha_char_count,
+    word_norm_match = n_text_matches / word_count
+  )
+
+gg_nccn_rectal_cape <- plot_guideline_str(
+  dat = dft_nccn_sum_rectal,
+  y_var = 'char_norm_match',
+  plot_title = "String matches from NCCN PDF rectal guidelines",
+) +
+  geom_vline( 
+    xintercept = ymd('2005-06-15'), 
+    color = pal_cape_guide[2]
+  ) +  
+  annotate(
+    geom = "text", size = 4, color = pal_cape_guide[2],
+    x = ymd('2005-06-15'), y = 0.9 * 10^(-4), hjust = 1,
+    label = "FDA approved"
+  )
+
+
+gg_nccn_rectal_capeox <- plot_guideline_str(
+  dat = dft_nccn_sum_rectal,
+  y_var = 'char_norm_capeox',
+  plot_title = "String matches from NCCN PDF rectal guidelines",
+  plot_subtitle = "CapeOx strings only"
+) +
+  geom_vline( 
+    xintercept = ymd('2022-12-14'), 
+    color = pal_cape_guide[2]
+  ) +  
+  annotate(
+    geom = "text", size = 4, color = pal_cape_guide[2],
+    x = ymd('2022-12-14'), y = 0.9 * 10^(-4), hjust = 1,
+    label = "FDA approved"
+  )
+
+```
+
+#### Rectal
+
+Same as above for NCCN rectal guidelines
+
+```{r}
+#| include: true
+#| fig-height: 3
+gg_nccn_rectal_cape
+gg_nccn_rectal_capeox
+```
+
+**Notes**
+
+- There is a broad approval for metastatic **colorectal** cancer in 2001, with no conmed requirements.  I marked the first rectal cancer approval here, but that may be wrong.
+
+
+
+
+
+
+
+
+
+
+```{r}
+dir_biomark <- here('data', 'stories', 'biomarker_driven_use')
+
+# Trastuzumab stuff first
+dft_tras_model <- readr::read_rds(here(dir_biomark, 'tras_model.rds'))
+gg_tras_tab <- readr::read_rds(here(dir_biomark, 'tras_gg_tab.rds'))
+gg_tras_mosaic <- readr::read_rds(here(dir_biomark, 'tras_gg_mosaic.rds'))
+
+dft_vemura_model <- readr::read_rds(here(dir_biomark, 'vemura_model.rds'))
+gg_vemura_tab <- readr::read_rds(here(dir_biomark, 'vemura_gg_tab.rds'))
+gg_vemura_mosaic <- readr::read_rds(here(dir_biomark, 'vemura_gg_mosaic.rds'))
+
+
+```
+
+
+### *R4.6 Biomarker driven use
+
+**Note:** Tables are currently broken, will get to this.
+
+#### Trastuzumab, EBBB2
+
+We observed several off label uses of trastuzumab, trastuzumab emtansine and trastuzumab deruxtecan (we generalize, just writing "Trastuzumab" below).  Because trastuzumab is indicated for HER2 over-expressing breast cancer, we hypothesized that an ERBB2 alteration may prompt a provider to try trastuzumab in other cancers.
+
+NSCLC technically has an indication for trastuzumab deruxtecan in HER2-mutated which was added in 2022.  All the uses of trastuzumab in our cohort happen to not meet this indiation's requirements (time, drug or both), so I'm cheating a bit and treating NSCLC like the other cohorts that have no indications at all (by including it in this analysis).
+
+The following 2x2 tables show the occurence of trastuzumab use (at any time) and ERBB2 alterations (at any time) in all cohort participants, that is those with at least one drug included in our analysis:
+
+
+```{r}
+#| include: true
+#| fig-height: 4
+gg_tras_tab
+```
+
+A mosaic plot is another display option:
+
+```{r}
+#| include: true
+#| fig-height: 5
+gg_tras_mosaic
+```
+
+**Notes:**
+
+- Fitting a logistic regression to this data obviously gives a significant result.  I think the raw counts are a convincing case that ERBB2 alterations prompt providers to try trastuzumab.
+- This case remains strong whether we include lung cancer or not.
+
+#### Vermurafenib, BRAF
+
+Similar to the above, we hypothesized that off label uses of Vemurafenib may be motivated by a BRAF alteration.  All six cohorts are included in this analysis because there are no indications in any of them (melanoma is the BRAF-driven indication motivating the hypothesis).
+
+2x2 tables:
+
+```{r}
+#| include: true
+#| fig-height: 4
+gg_vemura_tab
+```
+
+Mosaic plot:
+
+```{r}
+#| include: true
+#| fig-height: 5
+gg_vemura_mosaic
+```
+
+**Notes:**
+
+- Definitely a case where the raw counts tell the story:  out of 4132 BRAF-negative participants no vemurafenib use was observed.  Out of 216 BRAF-positive cases, 11 tried vemurafenib.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+# A bit of a hacky helper because we're assuming a dataframe name and creating
+#  a dependence on this environment.  But it works:
+failure_test_helper <- function(
+    cohort_to_pull, agent_to_pull, step_to_pull
+) {
+  rtn <- dft_off_label_cohort_agent_detail %>%
+    filter(cohort %in% cohort_to_pull) %>%
+    filter(agent %in% agent_to_pull) %>%
+    filter(step_lost %in% step_to_pull) %>%
+    pull(n_off_label)
+  
+  if (length(rtn) != 1) {
+    print(rtn)
+    cli_abort("failure_test_helper() failed with {cohort_to_pull}, {agent_to_pull}, {step_to_pull}")
+  }
+  
+  return(rtn)
+}
+
+failure_test_helper("NSCLC", "Bevacizumab", "test_with_carbotaxol")
+  
+
+```
+
+
+### R4.7 Conmed-based failures
+
+In this section we dig into the exposures which failed when adding a test for conmeds, going case by case for those with a large count for {cohort, agent, test_with_*} (see R3.6).  I have arbitrarily included those combinations with at least 10 cases to start.
+
+#### NSCLC Bevicizumab with Carboplatin/Paclitaxel
+
+There were `r failure_test_helper("NSCLC", "Bevacizumab", "test_with_carbotaxol")` exposures to Bevacizumab in NSCLC which had no valid indications left after we added `test_with_carbotaxol` (testing that carboplatin and paclitaxel were both used, as required by some labels for this drug).  For the rest of this section this is how I will state this for brevity:
+
+- Cohort:  NSCLC
+- Exposure: Bevacizumab
+- Test: `test_with_carbotaxol` (must be used with Carboplatin and Paclitaxel)
+
+
+Conmeds overlapping with these exposures (limited to those with at least 5 uses in this case):
+
+```{r}
+#| include: true
+  
+get_overlaps_by_step(
+  dft_stepwise_new_olu, 
+  dat_hdrug_conmed = dft_hdrug_conmed,
+  fail_step = "test_with_carbotaxol", 
+  cohort_limit = "NSCLC"
+) %>% 
+  filter(exposures >= 5) %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+Observations:
+
+- Seems using platinum+pem vs platinum+paclitaxel is a question people are interested in, with somewhat mixed evidence:  https://doi.org/10.1186/s12885-021-08136-5
+- Osi is being given alongside Bev in quite a few of these too.
+
+#### Pancreas, Capecitabine, with chemo
+
+- Cohort:  Pancreas
+- Exposure: Capecitabine
+- Test: `test_with_chemo` = must be used with at least one agent of any kind, so the list below is redundant for now:
+
+Conmeds overlapping with these exposures:
+
+```{r}
+#| include: true
+
+get_overlaps_by_step(
+  dft_stepwise_new_olu, 
+  dat_hdrug_conmed = dft_hdrug_conmed,
+  fail_step = "test_with_chemo", 
+  cohort_limit = "Pancreas"
+) %>% 
+  flextable(.) %>%
+  autofit(.)
+```
+
+Observations:
+
+- Recall that while the chemo check is higher in our priority system, *all* of these were used before the indication was written.  So this isn't as interesting as a conmed case, to me.
+
+
+#### Breast, Everolimus with Exemestane
+
+- Cohort:  Breast
+- Exposure: Everolimus
+- Test: `test_with_exemestane` 
+
+Conmeds overlapping with these exposures:
+
+```{r}
+#| include: true
+
+get_overlaps_by_step(
+  dft_stepwise_new_olu, 
+  dat_hdrug_conmed = dft_hdrug_conmed,
+  fail_step = "test_with_exemestane", 
+  cohort_limit = "Breast"
+) %>% 
+  flextable(.) %>%
+  autofit(.)
+```
+
+Observation:  Fulvestrant seems like a common choice.
+
+
+#### NSCLC, Nabpaclitaxel with carboplatin
+
+- Cohort:  NSCLC
+- Exposure: Nabpaclitaxel
+- Test: `test_with_carboplatin`
+
+Conmeds overlapping with these exposures:
+
+```{r}
+#| include: true
+
+get_overlaps_by_step(
+  dft_stepwise_new_olu, 
+  dat_hdrug_conmed = dft_hdrug_conmed,
+  fail_step = "test_with_carboplatin", 
+  cohort_limit = "NSCLC"
+) %>% 
+  flextable(.) %>%
+  autofit(.)
+```
+
+
+
+#### Breast, pertuzumab with trastuzumab and chemo
+
+- Cohort: Breast
+- Exposure: Pertuzumab
+- Test: `test_with_tras_chemo` (Requires trastuzumab and chemotherapy.  We just check that at least one additional drug was used for chemo.)
+
+Conmeds overlapping with these exposures:
+
+```{r}
+#| include: true
+
+get_overlaps_by_step(
+  dft_stepwise_new_olu, 
+  dat_hdrug_conmed = dft_hdrug_conmed,
+  fail_step = "test_with_tras_chemo", 
+  cohort_limit = "Breast",
+  agent_limit = "Pertuzumab"
+) %>% 
+  flextable(.) %>%
+  autofit(.)
+```
+
+*Notes:* 
+
+- Using pertuzumab + trastuzumab without any additional drugs was by far the most common choice, rather than a THP regimen or similar.
+
+
+#### Pancreas, irinotecan liposome with folf
+
+- Cohort: Pancreas
+- Exposure: Irinotecan liposome
+- Test: `test_with_folf` (requiring both Fluorouracil and Leucovorin Calcium)
+
+Conmeds overlapping with these exposures:
+
+```{r}
+#| include: true
+
+get_overlaps_by_step(
+  dft_stepwise_new_olu, 
+  dat_hdrug_conmed = dft_hdrug_conmed,
+  fail_step = "test_with_folf", 
+  cohort_limit = "Pancreas"
+) %>% 
+  flextable(.) %>%
+  autofit(.)
+```
+
+Observation:  Looks like the most common choice was to drop leucovorin or both.
+
+
+
+#### Pancreas, nabpaclitaxel with gemcitabine
+
+- Cohort: Pancreas
+- Exposure: Nabpaclitaxel
+- Test: `test_with_gemcitabine`
+
+Conmeds overlapping with these exposures:
+
+```{r}
+#| include: true
+
+get_overlaps_by_step(
+  dft_stepwise_new_olu, 
+  dat_hdrug_conmed = dft_hdrug_conmed,
+  fail_step = "test_with_gemcitabine", 
+  cohort_limit = "Pancreas",
+  agent_limit = "Nabpaclitaxel"
+) %>% 
+  flextable(.) %>%
+  autofit(.)
+```
+
+
+
+### *R4.8 Biomarker-based OLU
+
+
+```{r}
+dft_biom_her2_fails <- dft_stepwise_new_olu %>% 
+  filter(step %in% "test_biom_her2") %>%
+  pull(new_off_label) %>%
+  `[[`(.,1) 
+
+n_her2_exposure_fails <- dft_biom_her2_fails %>% nrow(.)
+
+dft_biom_her2_fails %<>%
+  select(cohort, record_id, ca_seq) %>%
+  distinct(.)
+
+n_her2_people_fails <- dft_biom_her2_fails %>% nrow(.)
+
+dft_ca_ind_breast <- dft_all_cases %>% 
+  filter(cohort %in% "Breast") %>%
+  pull(ca_ind) %>%
+  `[[`(.,1) %>%
+  fix_cohort_names(.)
+
+dft_biom_her2_fails %<>%
+  select(cohort, record_id, ca_seq) %>%
+  left_join(
+    .,
+    select(dft_ca_ind_breast,
+           cohort, record_id, ca_seq, ca_bca_her_summ, bca_subtype),
+    by = c("cohort", "record_id", "ca_seq")
+  )
+
+```
+
+#### HER2, Trastuzumab & Pertuzumab
+
+There were `r n_her2_exposure_fails` exposures in `r n_her2_people_fails` people which required HER2+, but we didn't find evidence of that in IHC/ISH values reported in pathology.  This is in Trastuzumab and Pertuzumab mostly.  We did not flag people with no recorded tests before the drug use, because they could have been tested at another institution.  This only includes people who had at least one test, and all their tests were negative/normal.  
+
+The easiest way we can check the result is looking at the patient-level summary for HER2, and for the breast cancer subtype.  We would expect to see a substantial number of people who were binned into the HER2- categories if I'm right, even though I'm not sure of the exact algorithm used to collapse pathology results into a time-invariant patient summary.
+
+The following table shows counts of the number of people in each level of `ca_bca_her_summ` and `bca_subtype`, among those who had at least one off label trastuzumab use failed when we added the HER2+ biomarker check:
+
+```{r}
+#| include: true
+dft_biom_her2_fails %>%
+  select(ca_bca_her_summ, bca_subtype) %>%
+  gtsummary::tbl_summary(.)
+```
+
+**Notes:**
+
+- This is mostly people who are negative, now that we're limiting to those who had at least one test before the drug exposure.  That's the direction of shift we would expect.
+
+
+
+```{r}
+dft_biom_breast_tests <- readr::read_rds(
+  here('data', 'cohort', 'biomarker_flags', 'biom_breast_1row_per_test.rds')
+)
+
+vec_olu_biom_her2 <- dft_biom_her2_fails$record_id
+
+dft_biom_her2_traj_tests <- dft_biom_breast_tests %>%
+  filter(str_detect(test, "her2")) %>%
+  filter(record_id %in% vec_olu_biom_her2) %>%
+  select(record_id, 
+         event = test, 
+         dob_to_event = dob_path_proc_days, 
+         contains("biom"))
+
+dft_biom_her2_traj_drugs <- dft_stepwise_new_olu %>% 
+  filter(step %in% "test_biom_her2") %>%
+  pull(new_off_label) %>%
+  `[[`(.,1) %>%
+  filter(record_id %in% vec_olu_biom_her2) %>%
+  left_join(
+    ., 
+    select(dft_hdrug_cohort, cohort, record_id, ca_seq, regimen_number, drug_number,
+           agent, drugs_startdt_int),
+    by = c('cohort', 'record_id', 'ca_seq', 'regimen_number', 'drug_number',
+           'agent')
+  ) %>%
+  select(record_id, event = agent, dob_to_event = drugs_startdt_int)
+
+dft_biom_her2_traj <- bind_rows(
+  dft_biom_her2_traj_tests,
+  dft_biom_her2_traj_drugs
+) %>%
+  arrange(record_id, dob_to_event)
+
+
+
+```
+
+The following table shows both path reports and drug uses in sequence.  This only includes people who were listed as HER2+ in summary variables, but we marked as off label for not being HER2+ at the time of drug use requiring it.  I'm looking to see if the code worked by going case by case in those identified.
+
+```{r}
+#| include: true
+dft_biom_her2_traj %>%
+  dt_wrapper(.)
+```
+
+*Notes*
+
+- Looking through these, it looks like the code did what we expect.
+- There are quite a few people with a HER2+ result AFTER using trastuzumab.
+
+```{r}
+dft_her2_ngs <- dft_biom_her2_fails %>%
+  select(record_id) %>%
+  left_join(., select(dft_gen_mark, record_id, any_ERBB2), by = 'record_id') %>%
+  left_join(
+    .,
+    select(dft_ca_ind_breast, record_id, ca_bca_her_summ),
+    by = 'record_id'
+  ) %>%
+  replace_na(list(any_ERBB2 = F)) 
+```
+
+
+One more possibility:  Are there ERBB2 mutations/amplifications in these people?  Here I'm looking at the people who used a HER2+ requiring drug, but didn't have a positive IHC/ISH before they took it:
+
+```{r}
+#| include: true
+dft_her2_ngs %>%
+  select(-record_id) %>%
+  mutate(any_ERBB2 = if_else(any_ERBB2, "ERBB2 alt.", "ERBB2 wild")) %>%
+  gtsummary::tbl_summary(by = "any_ERBB2")
+```
+
+**Notes:**
+
+- Lots of ERBB2 mutations/alterations in this group, about a third.  Indicates (to me) that people may have been using NGS as evidence for administering trastuzumab.
+- 4/7 ERBB2 altered people also were marked as positive in the summary variable, so curators may have also taken this as evidence.
+- GENIE attempts to remove germline data, and I think ERBB2 is often germline mutated, so that's a major caveat here.
+
+
+
+
+```{r}
+# Doing the sanity check first this time:
+
+dft_biom_egfr_fails <- dft_stepwise_new_olu %>% 
+  filter(step %in% "test_biom_EGFR_pT790M") %>%
+  pull(new_off_label) %>%
+  `[[`(.,1) %>%
+  filter(agent %in% "Osimertinib")
+
+n_egfr_exposure_fails <- dft_biom_egfr_fails %>% nrow(.)
+
+dft_biom_egfr_fails %<>%
+  select(cohort, record_id, ca_seq) %>%
+  distinct(.)
+
+n_egfr_people_fails <- dft_biom_egfr_fails %>% nrow(.)
+
+dft_ca_ind_nsclc <- dft_all_cases %>% 
+  filter(cohort %in% "NSCLC") %>%
+  pull(ca_ind) %>%
+  `[[`(.,1) %>%
+  fix_cohort_names(.)
+
+dft_biom_egfr_fails %<>%
+  select(cohort, record_id, ca_seq) %>%
+  left_join(
+    .,
+    select(dft_ca_ind_nsclc,
+           cohort, record_id, ca_seq),
+    by = c("cohort", "record_id", "ca_seq")
+  )
+
+
+```
+
+
+#### EGFR, Osimertinib, NSCLC
+
+There are `r n_egfr_exposure_fails` exposures in `r n_egfr_people_fails` people designated off label when the check for EGFR p.T790M was added.  This was the last indication for Osimertinib in NSCLC in these people, the other being the EGFR exon 19 deletion or p.L858R.
+
+This biomarker is based on genomic results, so we can leverage cBioPortal to check a handful of cases (the genomic results are displayed pretty clearly, compared to HER2).  Here are the people:
+
+```{r}
+#| include: true
+set.seed(239084)
+dft_biom_egfr_fails %>%
+  sample_frac(1) %>% # just shuffle cases, get random ones.
+  dt_wrapper(.)
+```
+
+- Some of these people have other EGFR variants that have strong recommendations, up to NCCN recommending Osi, according to the OncoKB annotations.  Examples are GENIE-MSK-P-0019485 having p.G719A and GENIE-MSK-P-0009948 having p.L861Q.
+- Exon 19 in-frame insertions were present (GENIE-MSK-P-0008602), as were missense alterations on exon 19 (p.L747A on GENIE-DFCI-168454), splice variants, structural variants (GENIE-MSK-P-0025284, but after osi started).  These generally have lower "evidence levels" on OncoKB, down to none at all.
+
+This is a candidate for biomarker-driven use.  Lots of these people have weird EGFR things that someone seemed to think were worth trying.
+
+
+
+
+
+
+
+
+## Appendices
+
+### Indications sheet
+
+The following table shows a few relevant columns from the `indications.csv` sheet.  This is not filtered, so it contains approvals from other regulators and drugs we've excluded from our analysis.
+
+```{r}
+#| include: true
+dft_ind_mapped %>% 
+  select(component, regulator, date, condition, with, biomarker, stage_or_status) %>%
+  dt_wrapper(.)
+```
+
+
+```{r}
+dft_drug_index <- readr::read_rds(
+  here('data', 'cohort', 'drug_index.rds')
+)
+dft_drug_index %<>%
+  replace_na(list(n_exposure = 0, n_overlap = 0))
+```
+
+### Drug index
+
+This shows the drug names that appear in our cohort.  In addition to the exposures (`n_exposure`) we also show the drugs which overlap with the exposures (`n_overlap`), important for conmed checks.  Overlaps can, of course, be older drugs which would not make it through our filters for exposures.
+
+```{r}
+#| include: true
+dft_drug_index %>%
+  dt_wrapper(.)
+```
+
+
+### Coverage of checks
+
+```{r}
+vec_covered_with_simple <- dft_simple_with_tests %>% pull(with_req) %>% unique
+
+# These have to be manually updated:
+vec_covered_with_complex <- c(
+  "0", # monotherapy,
+  "Chemotherapy", # just checks >= 1 drug used.
+  "Platinum-containing chemotherapy",
+  "Platinum-doublet",
+  "Ipilimumab AND Platinum doublet",
+  "Carboplatin AND (Paclitaxel OR nab-Paclitaxel)",
+  "Pemetrexed AND Platinum agent",
+  "Trastuzumab AND Chemotherapy",
+  "Aromatase inhibitor",
+  "Aromatase inhibitor OR Tamoxifen",
+  "Nivolumab AND Platinum doublet",
+  "Fluoropyrimidine AND Irinotecan OR Fluoropyrimidine AND Oxaliplatin"
+)
+
+vec_covered_with <- c(vec_covered_with_simple, vec_covered_with_complex)
+
+n_checked_with <- dft_poss_app %>%
+  filter(ind_with %in% vec_covered_with) %>%
+  nrow(.)
+
+n_unchecked_with <- dft_poss_app %>%
+  filter(!(ind_with %in% vec_covered_with) & !is.na(ind_with)) %>%
+  nrow(.)
+
+dfp_unchecked_with <- dft_poss_app %>%
+  filter(!test_all & !is.na(ind_with)) %>%
+  filter(!(ind_with %in% vec_covered_with)) %>%
+  count(ind_with, sort = T)
+
+```
+
+#### Concomitant therapy ('with') checks
+
+There are `r nrow(dft_poss_app)` linked indications for the drug exposures we're studying.  Among those,
+
+- `r n_checked_with` have an "with" entry we've covered in our checks.  Not all the checks are optimal (for example, for "chemotherapy" we just check that at least one conmed was used).
+- `r n_unchecked_with` have a "with" entry we haven't covered yet.
+
+Among those "with" entries we haven't checked yet, `r sum(pull(dfp_unchecked_with, n))` are part of a exposure-indication link (`n`) that is currently passing all tests.  Here's the list:
+
+
+```{r}
+#| include: true
+dfp_unchecked_with %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+*Notes:*
+
+- We can't check prednisone use because it's not collected in BPC.
+- "Chemoradiotherapy" checking is probably hard or impossible in BPC, leaving it alone for now due to the low perceived risk/reward.
+
+  
+
+
+
+
+```{r}
+vec_covered_biom_simple <- dft_simple_biom_tests %>% 
+  pull(ind_sheet_bio_req) %>% unique
+
+vec_covered_biom_complex <- character(0)
+# vec_covered_bio_complex <- c(
+#   "HER2+",
+#   "HR+ and HER2-",
+#   "HR+",
+#   "ER+",
+#   "TNBC",
+#   "ER+|HER2-",
+#   "EGFR exon 19 deletion|EGFR p.L858R",
+#   "No EGFR mutations AND No ALK mutations",
+#   "KRAS",
+#   "BRAF p.V600E",
+#   "EGFR p.T790M"
+# )
+
+vec_covered_biom<- c(vec_covered_biom_simple, vec_covered_biom_complex)
+
+n_checked_biom <- dft_poss_app %>%
+  filter(ind_biomarker %in% vec_covered_biom) %>%
+  nrow(.)
+
+n_unchecked_biom <- dft_poss_app %>%
+  filter(!(ind_biomarker %in% vec_covered_biom) & !is.na(ind_biomarker)) %>%
+  nrow(.)
+
+dfp_unchecked_biom <- dft_poss_app %>%
+  filter(!test_all & !is.na(ind_biomarker)) %>%
+  filter(!(ind_biomarker %in% vec_covered_biom)) %>%
+  count(ind_biomarker, sort = T)
+
+```
+
+
+#### Biomarker requirement checks
+
+There are `r nrow(dft_poss_app)` linked indications for the drug exposures we're studying.  Among those,
+
+- `r n_checked_biom` have a "biomarker" entry we've covered in our checks.  
+- `r n_unchecked_biom` have a "biomarker" entry we haven't covered yet.
+
+Among those biomarker entries we haven't checked yet, `r sum(pull(dfp_unchecked_biom, n))` are part of a exposure-indication link (`n`) that is currently passing all tests.  Here's the list:
+
+
+```{r}
+#| include: true
+dfp_unchecked_biom %>%
+  dt_wrapper(.)
+```
+
+**Notes:**
+
+- Some that we can't do in GENIE:
+  - "EGFR" - this is from cetuximab and panitumumab, and seems to refer to expression rather than mutations in the case of cetuximab.
+  - Reading the label for panitumumab shows that "KRAS" means *wild type* KRAS and NRAS.  I removed this check for now, wild type is a bit fuzzier than a specific mutation.
+- Items higher on this list will generally give us more ground covered.
+
+
+
+
+
+### Issues/concerns
+
+
+#### Unused conditions
+
+The Warner `indications.csv` sheet contains many conditions which didn't seem to map to any BPC cohort are:
+
+```{r}
+#| include: true
+dft_ind_mapped %>%
+  count(condition) %>%
+  distinct(.) %>%
+  filter(!(condition %in% dft_cw_condition$condition)) %>%
+  arrange(condition) %>%
+  rename(n_rows = n) %>%
+  dt_wrapper(.)
+```
+
+Notes:
+
+- The most important condition which is excluded is `"<NONE>"`.  We will need to discuss what those rows represent. 
+- Not all of these conditions describe a drug used in the BPC, and not all of them describe FDA indications (which is our first target).
+
+
+
+
+
+
+#### Miscellaneous from Mar 2024
+
+
+```{r}
+n_ramucirumab_all <- dft_hdrug_cohort %>%
+  filter(agent %in% "Ramucirumab") %>%
+  nrow(.)
+```
+
+- **Question: Is Ramucirumab used in the Bladder cohort?**
+  - No.  There are `r n_ramucirumab_all` uses in the BPC cohorts, but none are from Bladder.  The only uses are in NSCLC (mostly) and CRC.
+  
+```{r}
+n_enfortumab_bladder <- dft_hdrug_cohort %>%
+  filter(agent %in% "Enfortumab Vedotin" & cohort %in% "Bladder") %>%
+  nrow(.)
+```
+
+- **Question: What about enfortumab in the Bladder cohort?**
+  - Used `r n_enfortumab_bladder` times total, so not a ton of data here.
+
+- **Question: Does neuroendocrine histologic pattern explain the use of Lutetium Lu 177 Dotatate?**
+  - Unfortunately the relevant field from the pathology dataset,  "Prostate Cancer: Specialized Histologic Pattern (Across All Prostate Specimens", `path_pros_pat`, appears to be missing or "not noted" for 95% of samples.  Out of the 13 first and only prostate cancers with lutetium use, none had a neuroendocrine subtype noted in any of their samples.  This doesn't mean a ton with 95% missing data of course.
+  - If others are aware of other BPC variables that would indicate this let me know.
+  
+  
+```{r}
+dat_prostate_ca_ind <- readr::read_rds(
+  here('data', 'no_ca_seq_filter', 'clin_dat_wide.rds')
+) %>%
+  filter(cohort %in% "Prostate") %>%
+  pull(ca_ind) %>%
+  `[[`(.,1)
+dat_prostate_ca_ind %<>% 
+  filter(stage_dx_iv %in% "Stage IV")
+
+dat_prostate_ca_ind %<>%
+  mutate(
+    ca_dmets_yn = case_when(
+      str_detect(ca_dmets_yn, "No") ~ "No, S4, no dmet ...",
+      T ~ ca_dmets_yn
+    )
+  )
+```
+
+  
+  
+- **Question:  Is Stage IVa the same as "Stage IV without distant mets" in prostate cancer?**
+
+  - *Summary: We can't tell for sure, but there are no signs of a direct violation of that concept*
+  - Detailed staging is covered by a few variables: (1) `best_ajcc_stage_cd` which comes from the tumor registry, and (2) `ca_stage` or `ca_path_group_stage` which come from curation if the tumor registry data is not available.  In this case (Stage IV prostate cancer), `ca_path_group_stage` and `ca_stage` are not completed by design, and `ca_stage` is not even in the datasets, so we're left with just the tumor registry data.  Here's a crosstabulation between `ca_dmets_yn` (rows, slightly rephrased for length) and `best_ajcc_stage_cd` (columns):
+  
+```{r, include = T}
+dat_prostate_ca_ind %>%
+  tabyl(
+    ca_dmets_yn, best_ajcc_stage_cd
+  )
+```
+
+
+*Notes:* The vast majority are just "4" or missing, so we don't know.  For those that are 4A, they don't have dmets, and for those that are 4B they do.  So we have few signs, but they all align with the hypothesis at least.
+
+
+
+

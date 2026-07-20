@@ -1,0 +1,42 @@
+table: pt
+sort_by:
+- record_id
+columns:
+  phase: no
+  cohort: no
+  record_id: yes
+  institution: yes
+  redacted: no
+  birth_year: yes
+  naaccr_ethnicity_code: yes
+  naaccr_race_code_primary: yes
+  naaccr_race_code_secondary: yes
+  naaccr_race_code_tertiary: yes
+  naaccr_sex_code: yes
+  last_oncvisit_int: yes
+  last_alive_int: yes
+  last_anyvisit_int: yes
+  enroll_hospice_int: yes
+  dob_lastalive_int: no
+  dob_lastalive_int_mos: no
+  dob_lastalive_int_yrs: no
+  age_last_fu_yrs: no
+  hybrid_death_int: yes
+  age_death_yrs: no
+  hybrid_death_source: no
+  n_cancers: no
+  n_cancers_index: no
+  n_regimens_pt: no
+  n_imaging_reports_pt: no
+  n_scans_ct_pt: no
+  n_scans_mri_pt: no
+  n_scans_pet_ct_pt: no
+  n_scans_mammog_pt: no
+  n_scans_bone_pt: no
+  n_scans_pet_mri_pt: no
+  n_scans_other_pt: no
+  n_path_reports_pt: no
+  n_md_notes_pt: no
+  n_cpt_pt: no
+  n_rt_pt: no
+  release_version: no

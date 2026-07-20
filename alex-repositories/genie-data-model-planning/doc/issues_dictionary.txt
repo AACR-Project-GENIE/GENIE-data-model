@@ -1,0 +1,32 @@
+qc_layer
+	0 = the redcap submission submitted to us, one big table.
+	1 = tables split according to the redcap form: cancer_diagnosis, imaging, etc.
+	2 = tables from layer 1 with some additional processing (formatting column types)
+	3 = tables derived from an earlier layer (usually 2) for specific checks.
+
+dat_name
+	A name of the dataset.  In layer 1 this should match the PRISSMM form name.  Layer 3 will often be a join of two or more layer 2 tables, so the syntax tblA.jointype.tblB will be used.  For example, img.leftjoin.ca_ind would be the imaging table, left joined with the index cancer table.
+
+assertion_type
+	The name of the function used for checking.  Usually these functions will be from the {pointblank} R package and viewing that documentation may help.
+
+asserted_values
+	The list of valid values in cases where that makes sense with assertion_type.
+
+columns
+	The columns the assertion is being applied to.
+
+record_id, redcap_repeat_instrument, redcap_repeat_instance
+	These three columns should uniquely identify rows.  Stating the values where a problem was found allows someone to go back and find the relevant row.
+
+brief
+	An automatically generated summary of the assertion.
+
+label
+	A hand written summary of what the test is there for.  This is only supplied in cases where the brief is not clear.
+
+time_processed
+	The time on the computer when the code was run.
+
+agent_i
+	The identifier for the test within this dataset.  Only useful for tracking down errors or test code.

@@ -1,0 +1,108 @@
+---
+title: "KRAS G12D aNSCLC"
+subtitle: "Cohort build (feasibility) report"
+author: "Alex Paynter"
+date: "`r format(Sys.Date(), '%d %b %Y')`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 4
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+library(fs)
+library(purrr)
+library(here)
+purrr::walk(.x = fs::dir_ls(here("R")), .f = source)
+```
+
+
+```{r}
+theme_gtsummary_compact(font_size = 12)
+theme_gtsummary_language("en", big.mark = "") 
+```
+
+## Introduction
+
+This report addresses the feasibility of forming a cohort.  The goal cohort is finding a suitable control arm for an Astellas study of second line therapies in advanced or metastatic non-small cell lung cancer.  We will leverage the existing curation in the NSCLC BPC (v3.1-consoritum) cohort.
+
+## Attrition table
+
+The following table applies trial inclusion criteria to GENIE participants, showing how many are eliminated at each step.  We'll show the table first, and detailed explanations follow below.  Each step in the table is cumulative, meaning that the third row states the number who meet the conditions in the first, second and third rows, and so on.
+
+
+```{r}
+flow_track <- readr::read_rds(
+  here('data', 'cohort', 'flow_track.rds')
+)
+
+flow_track_ft <- flow_track %>%
+  mutate(n = map_int(pt_dat, nrow)) %>%
+  select(message, n) %>%
+  flextable() %>%
+  set_header_labels(message = "Condition", n = "n") %>%
+  theme_booktabs() %>%
+  align(j = "n", align = "right") %>%
+  fontsize(size = 10) %>%
+  autofit() 
+```
+
+```{r}
+#| include: true
+flow_track_ft
+```
+
+Roughly 10x the number for each available in main GENIE.
+
+Details:
+
+- **BPC NSCLC v3.1** - index cases in curated cohort.
+- **KRAS p.G12D** - has the eligibility mutation.
+- **No ALK or EGFR** - exclusion for any mutation at all in these two genes.
+- **Stage 3B+** - our definition of advanced.  This cohort does not currently include those who are diagnosed at an early stage and develop mets later (but it could).
+- **Prior platinum exposure** - has a platinum chemo exposure, started on or after advanced diagnosis.
+- **Prior IO exposure** - Same for IO (Pembrolizumab, Nivolumab, Atezolizumab or Ipilimumab)
+- **No investigational agents before index** - We do not have durations for investigational agents, so this slightly more aggressive exclusion is needed.
+  - Currently this allows the index to be investigational.  
+- **Has index therapy** - Has a line after both required prior exposures.
+- **NGS within window** - The NGS test is no more than 30 days after the index exposure.
+- **No TKI before index** - Using the list from exclusion #2 in the RFP.
+  - Currently this allows the index to be a TKI.
+- **No investigational agents before index** - We do not have durations for investigational agents, so this slightly more aggressive exclusion is needed.
+  - Currently this allows the index to be investigational.  
+- **No radiation in window** - No radiation therapy within 21 days of index thearpy.
+
+## Questions/comments
+
+- Incl #4: "targeted therapies under full or accelerated approval for actionable mutations (e.g., HER2, EGFR, KRAS G12C, c-MET overexpression)", don't know what this means.
+- Did not check if there's a scan within 30 days of index yet.
+- Can't verify whether CNS mets are untreated so skipped this one.  We could probably check for CNS mets with some effort.
+- Similarly active malignancy is hard to check, but as it turns out the qualifying cases had no other malignancies (active or otherwise).
+
+## Patients
+
+Because it's a small list, here are the qualifying cases:
+
+```{r}
+#| include: true
+flow_track %>% slice(n()) %>% pull(all_dat) %>% .[[1]] %>%
+  select(record_id, ca_seq, index_drugs, stage_dx) %>%
+  flextable(.) %>%  fontsize(size = 10) %>%
+  autofit() 
+```
+
+
+
+

@@ -1,0 +1,2165 @@
+---
+title: "GENIE BPC Bladder"
+author: "Alex Paynter"
+date: "Started May 2023"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: paper
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, include = F,
+                      warning = F, message = F,
+                      fig.width = 7, fig.height = 5)
+```
+
+
+<style type="text/css">
+.main-container {
+  max-width: 1000px !important;
+  margin: auto;
+}
+</style>
+
+
+
+```{r}
+library(purrr); library(fs); library(here);
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source)
+```
+
+
+```{r, set_gtsummary_theme}
+theme_gtsummary_compact(font_size = 12)
+theme_gtsummary_language("en", big.mark = "") 
+gdtools::register_gfont('Roboto')
+set_flextable_defaults(
+  font.size = 8,
+  theme_fun = theme_booktabs,
+  font.family = 'Roboto'
+)
+
+```
+
+
+
+```{r, warning = T}
+read_wrap <- function(p) {
+  read_rds(
+    file = here("data", 'cohort', paste0(p, '.rds'))
+  )
+}
+
+dft_pt <- read_wrap("pt")
+dft_ca_ind <- read_wrap("ca_ind")
+dft_img <- read_wrap("img")
+dft_med_onc <- read_wrap("med_onc")
+dft_path <- read_wrap("path")
+dft_reg <- read_wrap("reg")
+# dft_tm <- read_wrap("tm_level_dataset.csv")
+dft_cpt <- read_wrap("cpt")
+dft_drug <- read_wrap("drug")
+dft_rad <- read_wrap("rad")
+
+dft_reg_yr_est <- read_wrap('reg_yr_estimates_three_ways')
+
+n_bladder_cohort <- dft_ca_ind %>% nrow()
+
+```
+
+```{r, load_derived_data}
+dft_drug <- read_rds(file = here("data", 'cohort', 'drug.rds'))
+# The drug data is already filtered down to index cancer cases. 
+# We don't have do the step done for regimens above.
+
+read_wrap_dmet <- read_wrap <- function(p) {
+  read_rds(
+    file = here("data", 'dmet', p)
+  )
+}
+
+dft_pt_dmet <- read_wrap_dmet("pt_dmet.rds")
+dft_ca_ind_dmet <- read_wrap_dmet("ca_ind_dmet.rds")
+dft_reg_dmet_s <- read_wrap_dmet("reg_start_gte_dmet.rds")
+dft_reg_neo_cases <- read_wrap_dmet("neoadjuvant_status_case.rds")
+
+
+vec_lot_excluded_drugs <- readr::read_rds(
+  here('data', 'dmet', 'lines_of_therapy', 'excluded_drugs.rds')
+)
+dft_var_class <- readr::read_rds(
+  here('data', 'dmet', 'lines_of_therapy', 'variation_classes.rds')
+)
+dft_lot <- readr::read_rds(
+  here('data', 'dmet', 'lines_of_therapy', 'lot.rds')
+)
+
+# We also need the key of neoadjuvant therapies to state those in the report:
+dft_neoadj_therapy_key <- readr::read_rds(
+  here('data', 'drug_mapping', 'neoadjuvant_reg_key.rds')
+)
+```
+
+
+```{r}
+aacr_ss24_output_helper <- function(obj, filename) {
+  readr::write_rds(
+    obj,
+    here('output', 'aacr_ss24', 'tfl_obj', filename)
+  )
+}
+```
+
+
+
+
+```{r}
+dft_demo <- readr::read_rds(
+  here('data', 'cohort', 'formatted_characteristics.rds')
+)
+```
+
+## Content
+
+### *R1.1.1a: Characteristics at dx
+
+Table of characteristics at diagnosis.  A few notes:
+
+- If Karnofsky scale is reported, we convert that to ECOG and use it in this table.
+- ECOG scores are only reported if captured near diagnosis/baseline.  I defined this (arbitrarily) as any measurement up to 180 days before and 30 days after diagnosis.  
+
+```{r, tab_r1_1a, include = T}
+dft_demo %>%
+  select(-c(
+    record_id,
+    # taking off some stuff that's too detailed:
+    `Cancer site (detailed)`,
+    `First ECOG source`
+  )) %>%
+  gtsummary::tbl_summary(
+    data = .,
+    digits = list(
+      `Year of birth` ~ 0,
+      `Year of diagnosis` ~ 0
+    )
+  ) 
+
+gt_char <- dft_demo %>%
+  select(-record_id) %>%
+  gtsummary::tbl_summary(
+    data = ., 
+    digits = list(
+      `Year of birth` ~ 0,
+      `Year of diagnosis` ~ 0
+    ),
+    by = Institution
+  ) 
+
+aacr_ss24_output_helper(
+  gt_char,
+  '01_characteristics.rds'
+)
+```
+
+**Comment:** "Mets among Stage IV" and "Stage at dx" could be combined into one classification scheme (just dividing the Stage IV category further).  The main disadvantage of doing this is deviating from clear mapping to PRISSMM.
+
+### *R1.1.1b: Characteristics at dx (by site)
+
+The previous table, broken down by site.
+
+```{r, tab_r1_1b, include = T}
+gt_char
+```
+
+**Observation:** The only site with KPS scores available to convert to ECOG was MSK.  While this table only shows information near diagnosis, this is generally the case that MSK is the only site with subtantial KPS reporting.
+
+
+```{r}
+char_with_mg <- readr::read_rds(
+  here('data', 'cohort', 'formatted_characteristics_with_main_genie.rds')
+)
+```
+
+### R1.1.1c: Characteristics in main GENIE
+
+Showing the columns that can also be assessed in main GENIE.  Every person in BPC is represented in main genie, so these columns are not distinct.  We have added the age at sequencing feature because age at dx does not get recorded in main GENIE.
+
+```{r}
+gt_char_with_mg <- char_with_mg %>%
+  select(study, `Age at seq.`:Institution) %>%
+  gtsummary::tbl_summary(
+    data = ., 
+    by = study
+  )
+```
+
+
+```{r, include = T}
+gt_char_with_mg
+```
+
+```{r}
+gt_char_with_mg %>%
+  as_flex_table(.) %>%
+  fontsize(., size = 10) %>%
+  padding(padding.top = 0, padding.bottom = 0) %>%
+  save_as_pptx(., path = here('output', 'other', '2025_ss_char_with_mg.pptx'))
+```
+
+
+
+
+
+### R1.1.2 (placeholder)
+
+Placeholder.
+
+
+
+```{r}
+dft_timing <- make_grand_timing_df(
+  pt_dat = dft_pt,
+  ca_ind_dat = dft_ca_ind,
+  cpt_dat = dft_cpt,
+  reg_dat = dft_reg
+)
+
+dft_timing %<>% 
+  mutate(tt_seq_first_reg_yrs = tt_seq_dx_yrs - tt_first_reg_dx_yrs)
+
+dft_timing_long <- dft_timing %>% 
+  select(record_id, ca_seq, matches("^tt_")) %>%
+  select(-tt_dx_dob_yrs) %>%
+  pivot_longer(
+    cols = matches("^tt_"),
+    names_to = "interval",
+    values_to = "years"
+  ) %>%
+  mutate(
+    interval = beautify_strings(interval, 
+                                dict = dict_timing_vars)) 
+
+vec_origin_levs <- c("Diagnosis", "First Regimen", "Metastasis")
+
+dft_timing_long %<>% 
+  mutate(
+    origin = case_when(
+      str_detect(interval, "\\(from dx\\)$") ~ vec_origin_levs[1],
+      str_detect(interval, "\\(from first regimen\\)$") ~ vec_origin_levs[2],
+      str_detect(interval, "\\(from dmet\\)$") ~ vec_origin_levs[3],
+    ),
+    origin = factor(origin, levels = vec_origin_levs)
+  )
+
+gg_timing_dist_all <- plot_timing_intervals(dat = dft_timing_long)
+
+gg_timing_ecdf_all <- plot_timing_ecdf(dft_timing_long)
+
+gg_timing_comb_all <- cowplot::plot_grid(
+  (gg_timing_dist_all + labs(title = "Density")),
+  (gg_timing_ecdf_all + labs(title = "eCDF")),
+  nrow = 1,
+  rel_widths = c(0.7, 0.3)
+)
+
+```
+  
+### R1.1.3a: Event timing (whole cohort)
+
+The following plots show five time intervals in the entire cohort:
+
+1. Time (years) from diagnosis to the start of the first regimen.
+2. Time (years) from diagnosis to the first next generation sequencing test **report date**.
+3. Time (years) from first regimen to the first NGS report date.
+4. Time (years) from diagnosis to the first note of distant metastasis.  For those diagnosed at Stage IV, this implies a time of zero years.
+5. Time (years) that the participant was followed for survival.  Follow-up ends with censoring or death.
+
+On the left violin plots are shown, which approximate the density of observations (similar to a histogram).  Summary statistics are also shown in the top right of these plots.  At right, similar information is shown in an empirical cumulative distribution plot.  An eCDF shows the proportion of the cohort (Y) with a value less than or equal to each duration in years (X).
+
+```{r, include = T, fig.height = 7.5}
+gg_timing_comb_all
+```
+
+
+
+
+
+```{r}
+# Here we'll use the dmet filtered data for everything except for 
+#   the NGS test.  That is, only regimens which were started after
+#   distant metastasis, only people who had dmet, etc.
+dft_timing_dmet <- make_grand_timing_df_dmet(
+  pt_dat = dft_pt_dmet,
+  ca_ind_dat = dft_ca_ind_dmet,
+  cpt_dat = dft_cpt,
+  reg_dat = dft_reg_dmet_s
+)
+
+dft_timing_dmet_long <- dft_timing_dmet %>% 
+  select(record_id, ca_seq, matches("^tt_")) %>%
+  select(-tt_dmet_dob_yrs) %>%
+  pivot_longer(
+    cols = matches("^tt_"),
+    names_to = "interval",
+    values_to = "years"
+  ) %>%
+  mutate(
+    interval = beautify_strings(
+      interval, 
+      dict = dict_timing_vars_dmet
+    )
+  ) 
+
+vec_origin_levs <- c("Diagnosis", "First Regimen", "Metastasis")
+
+dft_timing_dmet_long %<>% 
+  mutate(
+    origin = case_when(
+      str_detect(interval, "\\(from dx\\)$") ~ vec_origin_levs[1],
+      str_detect(interval, "\\(from first regimen\\)$") ~ vec_origin_levs[2],
+      str_detect(interval, "\\(from dmet\\)$") ~ vec_origin_levs[3],
+    ),
+    origin = factor(origin, levels = vec_origin_levs)
+  )
+
+gg_timing_dmet_dist_all <- plot_timing_intervals(dat = dft_timing_dmet_long) 
+gg_timing_dmet_ecdf_all <- plot_timing_ecdf(dft_timing_dmet_long)
+
+gg_timing_dmet_comb_all <- cowplot::plot_grid(
+  (gg_timing_dmet_dist_all + labs(title = "Density")),
+  (gg_timing_dmet_ecdf_all + labs(title = "eCDF")),
+  nrow = 1,
+  rel_widths = c(0.7, 0.3)
+)
+
+
+```
+
+
+
+
+### R1.1.3b: Event timing (from dmet)
+
+The following plot is similar to the previous, except that times are indexed from the diagnosis of distant metastasis.  The cohort includes only those who were diagnosed with a metastasis at some point in followup.  These are the events shown:
+
+1. First NGS report date relative to the diagnosis of distant metastasis (years).
+2. First **post-metastasis** regimen start date, relative to the diagnosis of distant metastasis.  To be clear, regimens continued into the metastatic state are not counted here (open to change on this).
+3. Progression or censoring time relative to distant metastasis diagnosis.
+4. Survival or censoring time relative to distant metastasis.
+
+```{r, print_dmet_event_timing, include = T, fig.height = 6}
+gg_timing_dmet_comb_all
+```
+
+
+```{r, custom_timing_intervals}
+gg_timing_just_ngs <- cowplot::plot_grid(
+  (
+    plot_timing_intervals(
+      dat = filter(
+        dft_timing_long,
+        interval %in% "First NGS (from dx)"
+      ),
+      x_coord = c(-2, 5),
+      point_alpha = 1,
+      violin_width = 0.25,
+      point_height_jitter = 0.03
+    ) +
+      annotate(
+        geom = "point", y = 1.25, x = 1, alpha = 0
+      )
+  ),
+  (
+    plot_timing_intervals(
+      dat = filter(
+        dft_timing_dmet_long,
+        interval %in% "First NGS (from dmet)"
+      ),
+      x_coord = c(-2, 5),
+      point_alpha = 1,
+      violin_width = 0.25,
+      point_height_jitter = 0.03
+    ) +
+      annotate(
+        geom = "point", y = 1.25, x = 1, alpha = 0
+      )
+  ),
+  ncol = 1
+)
+
+ggsave(
+  gg_timing_just_ngs,
+  file = here(
+    'output', 'aacr_ss24', 'img',
+    '01_ngs_timing.pdf'
+  ),
+  height = 4, width = 6
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+dft_count_all <- make_obs_count_df(
+  med_onc_dat = dft_med_onc,
+  img_dat = dft_img,
+  reg_dat = dft_reg,
+  ca_ind_dat = dft_ca_ind
+)
+
+obs_type_levs <- c("Med Onc Notes",
+                   "Regimens",
+                   "Total Scans",
+                   "CT Scan",
+                   "MRI Scan",
+                   "PET or PET-CT")
+                   
+dft_count_long <- dft_count_all %>%
+  select(record_id, 
+         n_med_onc, 
+         n_scan_ct, 
+         n_scan_mri, 
+         n_scan_pet_or_pet_ct,
+         n_scan_total,
+         n_regimens) %>%
+  pivot_longer(cols = -record_id,
+               names_to = "type",
+               values_to = "n") %>%
+  mutate(
+    type_f = case_when(
+      type %in% "n_med_onc" ~ obs_type_levs[1],
+      type %in% "n_regimens" ~ obs_type_levs[2],
+      type %in% "n_scan_total" ~ obs_type_levs[3],
+      type %in% "n_scan_ct" ~ obs_type_levs[4],
+      type %in% "n_scan_mri" ~ obs_type_levs[5],
+      type %in% "n_scan_pet_or_pet_ct" ~ obs_type_levs[6]
+    ),
+    type_f = factor(type_f, levels = obs_type_levs)
+  )
+
+dft_count_quantiles <- dft_count_long %>%
+  nest(.by = type_f) %>%
+  mutate(res = purrr::map(.f = get_quantile_df,
+                          .x = data,
+                          var = "n")
+  ) %>%
+  select(type_f, res) %>%
+  unnest(res) 
+
+gg_count_ecdf <- ggplot(data = dft_count_long,
+                        aes(x = n)) + 
+  stat_ecdf(color = '#4477AA') + 
+  geom_text_repel(data = dft_count_quantiles,
+                  # yes, this is screwed up:
+                  aes(x = y, y = n, label = y),
+                  hjust = 0, nudge_x = 8, size = 2.5,
+                  direction = "x",
+                  segment.size = 0.15
+  ) + 
+  theme_bw() +
+  facet_wrap(vars(type_f), scales = "free", nrow = 2) + 
+  scale_y_continuous(
+    name = "Cohort fraction",
+    breaks = c(0, .5, 1),
+    labels = paste0(c(0, .5, 1)*100, "%")
+  ) + 
+  theme(
+    strip.text = element_text(hjust = 0)
+  )
+
+
+gg_count_hist_quan <- plot_count_hist_quan(
+  dat = dft_count_long,
+)
+
+
+
+```
+
+### R1.1.4a: Observations, histogram
+
+The following plot shows the number of people with X observations in our cohort.  The regimens are limited to only those for the index cancer (the other types of observations have no such designation).
+
+```{r, print_count_hist, include = T}
+gg_count_hist_quan
+```
+
+### R1.1.4b: Observations, eCDF
+
+Histograms are likely to be better understood by our clinical audience.  The following empirical cumulative distribution plot shows the same data in a way which might be appreciated by readers with computational backgrounds.
+
+```{r, print_count_ecdf, include = T}
+gg_count_ecdf
+```
+
+
+
+
+
+
+```{r create_count_table, include = F}
+dfp_obs_count <- dft_count_all %>%
+  select(
+    Regimens = n_regimens,
+    `MedOnc Notes` = n_med_onc,
+    `CT` = n_scan_ct,
+    `MRI` = n_scan_mri,
+    `Bone Scans` = n_scan_bone,
+    `PET or PET-CT` = n_scan_pet_or_pet_ct,
+    `Total scans` = n_scan_total
+  ) %>% 
+  gtsummary::tbl_summary(data = ., digits = everything() ~ 0) %>%
+  modify_header(
+    label = '**Observation Type**'
+  )
+
+dft_count_all %>%
+  select(
+    Regimens = n_regimens,
+    `MedOnc Notes` = n_med_onc,
+    `Total scans` = n_scan_total
+  ) %>% 
+  gtsummary::tbl_summary(data = ., digits = everything() ~ 0) %>%
+  modify_header(
+    label = '**Observation Type**'
+  ) %>%
+  aacr_ss24_output_helper(
+    .,
+    filename = "01_obs_count.rds"
+  )
+```
+
+### R1.1.4c: Observations, table
+
+Simplest representation of the number of observations:  A table with median, first quartile, third quartile.
+
+```{r, include = T}
+dfp_obs_count
+```
+
+
+
+
+
+```{r}
+
+set.seed(55)
+
+vec_swim_pt_subset <- dft_ca_ind %>%
+  filter(
+    !(ca_type %in% "Renal Pelvis Cancer"),
+    !is.na(stage_dx),
+    !(stage_dx %in% "Stage I-III NOS")
+  ) %>% 
+  pull(record_id) %>%
+  unique %>% 
+  sample(x = ., size = 50, replace = F)
+
+dft_status_block <- make_dmet_musc_prop_status_block(dft_ca_ind)
+
+dft_event_swim <- make_event_df(
+  ca_ind_dat = dft_ca_ind,
+  cpt_dat = dft_cpt
+)
+
+dft_swim_lab <- dft_ca_ind %>% 
+  select(record_id, stage_dx)
+gg_swim <- plot_swim_block_status(
+  block_dat = dft_status_block,
+  block_var = "status",
+  event_dat = dft_event_swim,
+  event_var = "event",
+  label_dat = dft_swim_lab,
+  label_var = "stage_dx",
+  order_by_label = T,
+  pt_subset = vec_swim_pt_subset,
+  line_pal = viridis::magma(n = 3, begin = 0.8, end = 0.2, alpha = 0.5)
+) 
+  
+```
+
+
+
+
+### *R1.1.5a Swimmer plot
+
+The following plot shows the status and major events for a random sample of participants, except those with renal pelvis cancer.  Because renal pelvis has different staging and curation, staging gets confusing if we include both.  Each participant is represented by one horizontal line.  The stage labeled on the Y axis is the stage at diagnosis.  The goal of this plot is describing survival in an intuitive way.
+
+```{r, include = T, fig.height = 6}
+gg_swim
+```
+
+Notes:
+
+- We're showing the report time (as opposed to order time) for the NGS test, which can be after death or censoring.
+- Stage and MIBC come from different fields, and some inconsistencies are obvious (for example, Stage 2+ with NMIBC for a long period).  Here are some causes:
+  - (**fixed**) Renal pelvis cancer is curated and staged differently, muscle invasive is not asssessed in the same way or used in staging in the same way.
+  - (*fixable*) Using a few cases, Chelsea Nichols confirmed some curation errors.  These could be fixed in future rounds.
+  
+  
+  
+  
+  
+```{r}
+dft_status_block_smoothed_out <- dft_status_block %>%
+  left_join(
+    ., 
+    select(dft_ca_ind, record_id, ca_seq, stage_dx),
+    by = c("record_id", "ca_seq")
+  )
+
+dft_status_block_smoothed_out %<>%
+  mutate(
+    status = case_when(
+      status %in% "Non-invasive" & 
+        stage_dx %in% paste("Stage", c("II", "III", "IV")) ~ "Invasive",
+      T ~ status
+    )
+  ) %>%
+  mutate(
+    status = factor(
+      status,
+      levels = levels(dft_status_block$status)
+    )
+  ) %>%
+  # if there are two invasive blocks, smash them together.
+  group_by(record_id, ca_seq, status) %>%
+  summarize(
+    dx_block_start = min(dx_block_start),
+    dx_block_end = max(dx_block_end),
+    .groups = "drop"
+  )
+
+gg_swim_smoothed <- plot_swim_block_status(
+  block_dat = dft_status_block_smoothed_out,
+  block_var = "status",
+  event_dat = dft_event_swim,
+  event_var = "event",
+  label_dat = dft_swim_lab,
+  label_var = "stage_dx",
+  order_by_label = T,
+  pt_subset = vec_swim_pt_subset,
+  line_pal = viridis::magma(n = 3, begin = 0.8, end = 0.2, alpha = 0.5)
+) 
+  
+```
+
+### *R1.1.5b Swimmer plot - additional assumptions
+
+Here we assume that a diagnosis of stage 2 or higher implies MIBC right at the time of diagnosis, regardless of what the medical oncologist notes say.  This smooths over the data problems in the previous plot, which may or may not be a service to readers of our paper.
+
+```{r, include = T}
+gg_swim_smoothed
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+dft_ca_ind %>%
+  select(contains("abdomen"))
+
+vec_met_loc <- c("abdomen", "bone", "brain", "breast", "extremity",
+                  "head_neck", "liver", "pelvis", "thorax")
+vec_met_regex <- paste(vec_met_loc, collapse = "|")
+
+dft_met_loc <- dft_ca_ind %>% 
+  # variables that describe distant metastasis at/after dx.
+  select(
+    record_id,
+    ca_seq,
+    matches(glue("^dmets_({vec_met_regex})")),
+    matches("^dx_to_dmets_.+_yrs$")
+  ) 
+
+dft_met_loc %<>%
+  pivot_longer(
+    cols = -c(record_id, ca_seq),
+    names_to = "var",
+    values_to = "value"
+  ) %>%
+  mutate(
+    met_loc = stringr::str_extract(var, vec_met_regex),
+    var = if_else(str_detect(var, "yrs"),
+                   "dx_to_dmet_yrs",
+                   "had_met")
+  ) 
+
+dft_met_loc %<>% pivot_wider(
+    names_from = "var",
+    values_from = "value"
+  )
+
+dft_met_loc %<>% 
+  mutate(
+    at_dx = case_when(
+      had_met %in% 1 & dx_to_dmet_yrs %in% 0 ~ 1,
+      had_met %in% 1 & !is.na(dx_to_dmet_yrs) ~ 0,
+      T ~ NA_real_
+    )
+  )
+
+dft_met_loc %<>%
+  mutate(
+    met_loc = stringr::str_replace(met_loc, "dmets_", ""),
+    met_loc = stringr::str_replace(met_loc, "_", "+"),
+    met_loc = stringr::str_to_title(met_loc)
+  )
+
+dft_met_sum_simple <- dft_met_loc %>%
+  group_by(met_loc, at_dx) %>%
+  summarize(
+    n = sum(had_met, na.rm = T),
+    .groups= "drop"
+  ) %>%
+  filter(!is.na(at_dx)) %>%
+  mutate(
+    at_dx = if_else(at_dx %in% 1,
+                    "at_dx",
+                    "post_dx")
+  ) %>%
+  pivot_wider(
+    names_from = at_dx,
+    values_from = n
+  ) %>%
+  mutate(
+    across(
+      .cols = -met_loc,
+      .fns = \(x){ if_else(is.na(x), 0, x) }
+    )
+  ) %>%
+  mutate(
+    Anytime = at_dx + post_dx
+  ) 
+
+
+
+dfp_met_sum_simple <- dft_met_sum_simple %>%
+  mutate(
+    across(
+      .cols = -met_loc,
+      # no idea why glue is failing here but it is: 
+      .fns = (function(x) 
+        paste0(x, " (", form_f((x/n_bladder_cohort)*100), "%)")
+      )
+    )
+  )
+
+dfp_met_sum_simple %<>%
+  select(
+    Location = met_loc,
+    `At dx` = at_dx,
+    `Post dx` = post_dx,
+    Anytime
+  )
+
+```
+
+### R1.1.6a: Metastasis location
+
+The following table counts the number of participants who had a metastasis at diagnosis, post diagnosis and anytime for each site category in the data.
+
+```{r, include = T}
+dfp_met_sum_simple %>%
+  flextable(.) %>%
+  flextable::theme_booktabs(.) %>%
+  flextable::fontsize(size = 8) %>%
+  autofit(.)
+```
+
+
+
+
+```{r}
+dft_met_sum_simple_long <- dft_met_sum_simple %>%
+  select(met_loc, at_dx, post_dx) %>%
+  pivot_longer(
+    cols = c(post_dx, at_dx),
+    names_to = "timing",
+    values_to = "n"
+  ) %>%
+  mutate(
+    prop = n / n_bladder_cohort
+  ) %>%
+  mutate(
+    timing = case_when(
+      timing %in% "at_dx" ~ "At diagnosis",
+      timing %in% "post_dx" ~ "Post diagnosis"
+    ),
+    # both for display reasons:
+    timing = fct_rev(factor(timing)),
+    met_loc = fct_rev(factor(met_loc))
+  )
+  
+
+dft_met_sum_simple_long %<>%
+  mutate(
+    met_loc = fct_recode(
+      met_loc,
+      `Brain/CNS` = "Brain",
+      `Head/Neck` = "Head+Neck"
+    )
+  ) %>%
+  group_by(met_loc) %>%
+  mutate(.total = sum(prop)) %>%
+  ungroup %>%
+  arrange(.total) %>%
+  mutate(met_loc = fct_inorder(met_loc))
+      
+
+gg_met_loc_bar <- ggplot(
+  dat = dft_met_sum_simple_long,
+  aes(x = prop, y = met_loc, fill = timing, group = timing) 
+) + 
+  theme_light() + 
+  geom_col(position = "stack") + 
+  scale_fill_manual(
+    values = c("#56b4e9", "#e69f00")
+  ) + 
+  scale_x_continuous(
+    name = "Proportion of cohort",
+    labels = scales::label_percent(),
+    expand = expansion(add = c(0,0), mult = c(0, 0.05))
+  ) +
+  labs(y = NULL, title = "Locations of metastasis") + 
+  guides(fill = guide_legend(title = NULL))
+
+ggsave(
+  gg_met_loc_bar,
+  file = here(
+    'output', 'aacr_ss24', 'img',
+    '01_met_location.pdf'
+  ),
+  height = 3, width = 6
+)
+  
+
+```
+
+### R1.1.6b Metastatsis location (graph)
+
+```{r, include = T}
+gg_met_loc_bar
+```
+
+
+
+
+
+```{r}
+upset_met_loc <- dft_met_loc %>%
+  select(record_id, ca_seq, met_loc, had_met) %>%
+  pivot_wider(
+    names_from = met_loc,
+    values_from = had_met
+  )  %>%
+  as.data.frame(.) %>%
+  plot_upset(.)
+
+upset_met_loc_abdomen <- dft_met_loc %>%
+  select(record_id, ca_seq, met_loc, had_met) %>%
+  pivot_wider(
+    names_from = met_loc,
+    values_from = had_met
+  )  %>%
+  filter(Abdomen %in% 1) %>%
+  as.data.frame(.) %>%
+  plot_upset(.)
+
+cp_upset_abdomen <- convert_upset_to_cowplot(upset_met_loc_abdomen)
+  
+upset_met_loc_extremity <- dft_met_loc %>%
+  select(record_id, ca_seq, met_loc, had_met) %>%
+  pivot_wider(
+    names_from = met_loc,
+    values_from = had_met
+  )  %>%
+  filter(Extremity %in% 1) %>%
+  as.data.frame(.) %>%
+  plot_upset(.)
+
+cp_upset_extremity <- convert_upset_to_cowplot(upset_met_loc_extremity)
+
+upset_separate_demo <- plot_grid(
+  cp_upset_abdomen,
+  cp_upset_extremity,
+  ncol = 1,
+  labels = c("Abdomen", "Extremity"),
+  scale = 0.9
+)
+  
+```
+
+
+### R1.1.6c: Co-occurrence of metastatic locations
+
+The following upset plot shows the combinations of metastatic sites, ordered by the number of people with that combination.  The metastastases here are at any point over the followup period, so they may occur at different times.
+
+*Note:* In each of these plots the tail is truncated (only the ~50 most common combinations are shown).
+
+```{r, include = T}
+upset_met_loc
+```
+
+**Comment:** To me this plot is overwhelming.  It may be better to show plots that show the co-occurence in the cohort of people with a specific metatstatic site.  For example, the top plot shows co-occurence for people with abdomen metastasis and the bottom plot shows co-occurrence for extremity metastasis.  This could be repeated over all the sites if it's valuable.
+
+```{r, include = T}
+upset_separate_demo
+```
+
+Still overwhelming but at maybe a valuable reference if you wanted information on a certain type of metastasis.
+
+
+
+
+```{r}
+gg_met_loc_timing <- dft_met_loc %>%
+  select(
+    record_id, met_loc, dx_to_dmet_yrs
+  ) %>%
+  filter(met_loc != "Breast") %>% # too few.
+  mutate(flat_color = "1") %>%
+  mutate(met_loc = forcats::fct_inorder(met_loc)) %>%
+  plot_timing_intervals(
+    time_var = "dx_to_dmet_yrs",
+    time_var_lab = "Years from dx to dmet",
+    facet_var = "met_loc",
+    color_var = "flat_color",
+    facet_cols = 2
+  )
+
+```
+
+### R1.1.6d: Timing of metastasis by site
+
+As a first pass, I am re-using my function for timing intervals, so some of these summary statistics (e.g. non-negative if observed) don't make sense.  We can optimize the plot if it's considered for manuscript inclusion.
+
+```{r, include = T, fig.height = 8}
+gg_met_loc_timing
+```
+
+
+
+
+```{r}
+met_time_custom <- readr::read_rds(here('data', 'cohort', 'met_time_custom.rds'))
+
+met_yn_cohort <- left_join(
+    select(dft_pt, record_id),
+    met_time_custom,
+    by = 'record_id'
+  ) %>%
+  # True for those with a met time listed, false otherwise
+  mutate(
+    across(
+      .cols = -c(record_id),
+      .fns = \(x) !is.na(x)
+    )
+  )
+  
+      
+```
+
+### R1.1.6e:  Reanalysis of met locations
+
+The above classifications are all based on the derived variables provided with the BPC data.  UC physicians on the team let us know that these were suboptimal, for example "thorax" and "abdomen" are heterogeneous groups that don't mean a ton in light of the established conventions in the field.  This sections starts from the raw imaging data and maps the ICD codes into groups that should be more meaningful.
+
+The table showing the mappings from ICD codes can be found in the appendices.  The following summary table shows the number of participants (%) who had a metastasis at any time to an anatomic location:
+
+```{r, include = TRUE}
+gtsummary::tbl_summary(
+    data = select(met_yn_cohort, -record_id)
+) 
+```
+
+**Note:** Local mets are **not shown** at all in this table.  See the appendix for image codes that I categorized as local (builds on the data guide appendix provided by the MSK stats team).  And let me know if there are mistakes, of course.
+
+
+
+
+
+
+
+
+
+
+```{r}
+set.seed(2398) # color sampling below.
+
+dft_drug %>% 
+  count(record_id, drug, sort = T) %>%
+  count(drug)
+
+dft_top_drugs <- dft_drug %>% 
+  count(record_id, drug, sort = T) %>%
+  count(drug) %>%
+  arrange(desc(n)) %>%
+  head(10)
+
+dft_top_drugs %<>%
+  mutate(drug = str_replace(drug, "\\(.*\\)", ""))
+
+
+gg_top_drugs <- plot_drug_prop(
+  drug_dat = dft_top_drugs,
+  cohort_n = n_bladder_cohort,
+  sample(viridisLite::magma(n = 10, begin = 0.2, end = 0.8)),
+  plot_title = glue("Drugs started any time (n={n_bladder_cohort})")
+)
+
+
+# Now repeat the calculation above for CRPC regimens only.
+
+dft_dmet_timing <- get_dmet_time(dft_ca_ind)
+  
+n_bladder_dmet <- get_dmet_time(dft_ca_ind) %>% nrow
+
+dft_drug_dmet <- get_dmet_time(dft_ca_ind) %>%
+  mutate(dmet_days = dx_dmet_yrs * 365.25) %>%
+  select(record_id, dmet_days) %>%
+  inner_join(
+    dft_drug, 
+    ., 
+    by = "record_id",
+    relationship = "many-to-one"
+  )
+
+dft_drug_dmet %<>% 
+  # dx_drug_start_int is the number of days from dx to start of drug.
+  filter(dx_drug_start_int >= dmet_days)
+
+# Same processing from here:
+dfp_top_drugs_dmet <- dft_drug_dmet %>%
+  group_by(record_id, drug) %>%
+  summarize(observed = 1, .groups = "drop") %>%
+  group_by(drug) %>%
+  summarize(n = sum(observed)) %>%
+  arrange(desc(n)) %>%
+  head(10) %>%
+  mutate(drug = str_replace(drug, "\\(.*\\)", ""))
+
+gg_top_drugs_dmet <- plot_drug_prop(
+  drug_dat = dfp_top_drugs_dmet,
+  cohort_n = n_bladder_dmet,
+  pal = sample(viridisLite::viridis(n = 10, begin = 0.2, end = 0.8)),
+  plot_title = glue("Drugs started in metastatic setting (n={n_bladder_dmet})")
+)
+
+gg_top_drug_comb <- cowplot::plot_grid(
+  gg_top_drugs, gg_top_drugs_dmet,
+  ncol = 1
+)
+
+ggsave(
+  gg_top_drug_comb,
+  file = here(
+    'output', 'aacr_ss24', 'img',
+    '01_drug_prop_horizontal.pdf'
+  ),
+  height = 4, width = 6
+)
+```
+
+
+```{r}
+# New version vertical by request.
+
+dft_top_drugs %<>%
+  mutate(drug = if_else(drug %in% "Gemcitabine Hydrochloride", "Gemcitabine", drug))
+
+dfp_top_drugs_dmet %<>%
+  mutate(drug = if_else(drug %in% "Gemcitabine Hydrochloride", "Gemcitabine", drug))
+
+
+set.seed(239048)
+gg_top_drug_not_met_vertical <- plot_drug_prop_vert(
+  drug_dat = dft_top_drugs,
+  cohort_n = n_bladder_dmet,
+  pal = sample(viridisLite::magma(n = 10, begin = 0.2, end = 0.8)),
+  plot_title = glue("Exposed at any time (n={n_bladder_cohort})")
+)
+
+gg_top_drug_dmet_vertical <- plot_drug_prop_vert(
+  drug_dat = dfp_top_drugs_dmet,
+  cohort_n = n_bladder_dmet,
+  pal = sample(viridisLite::viridis(n = 10, begin = 0.2, end = 0.8)),
+  plot_title = glue("Exposures started while metastatic (n={n_bladder_dmet})")
+)
+
+gg_top_drug_comb_vert <- cowplot::plot_grid(
+  gg_top_drug_not_met_vertical, 
+  gg_top_drug_dmet_vertical,
+  ncol = 1
+)
+
+ggsave(
+  gg_top_drug_comb_vert,
+  file = here(
+    'output', 'aacr_ss24', 'img',
+    '01_drug_prop_vertical.pdf'
+  ),
+  height = 4, width = 6
+)
+```
+
+
+
+### R1.2.1a: Drug exposure
+
+The following table shows the proportion of participants who were exposed to each drug at any time during followup.  Only regimens associated with the index cancer are considered, and only the top 10 most used drugs are shown.
+
+```{r, output_top_drug_plot, include = T, fig.height = 6, fig.width = 7}
+gg_top_drug_comb
+```
+
+
+
+
+
+```{r}
+dft_sun_reg_all <- make_sunburst_input(
+  dat = dft_reg,
+  var = "regimen_drugs",
+  order_var = "regimen_number",
+  max_depth = 3
+)
+```
+
+### R1.2.2a: Drug regimens (sunburst)
+
+The following plot (a "sunburst" plot) shows the regimens used by the cohort which were associated with an index cancer.  The innermost ring is the first drug regimen reported after diagnosis.  The second ring shows the second drug regimen used after diagnosis, etc.
+
+```{r, include = T}
+sun_wrap(dft_sun_reg_all, seed = 238)
+```
+
+Places to go from here to get a more tractable display:
+
+- Categorize the drugs into a few categories.
+- Look at the ordering of specific drugs of interest.
+- Examine the drugs used on/after an event of interest (distant metastasis, for example).
+
+
+```{r}
+dft_sun_reg_dmet <- make_sunburst_input(
+  dat = dft_reg_dmet_s,
+  var = "regimen_drugs",
+  order_var = "regimen_number",
+  max_depth = 3
+)
+```
+
+
+### R1.2.2b: Drug regimens, metastatic (sunburst)
+
+```{r, include = T}
+sun_wrap(dft_sun_reg_dmet, seed = 238)
+```
+
+
+
+```{r}
+dft_reg_yr_est %<>% mutate(event_yr = as.numeric(as.character(event_yr)))
+
+dft_reg_yr_est %<>% 
+  filter(!(type %in% "All"))
+
+gg_reg_yr <- ggplot(
+  dft_reg_yr_est,
+  aes(x = event_yr, group = type, color = type)
+) + 
+  # this is annoying, you have to do this to get the
+  #   legend to work below.
+  geom_point(alpha = 0, aes(y = median_n)) + 
+  geom_linerange(
+    alpha = 0.5,
+    aes(ymin = lcb_n, ymax = ucb_n)
+  ) + 
+  geom_line(
+    aes(y = median_n)
+  ) +
+  theme_bw() + 
+  labs(
+    x = "Year of regimen start",
+    y = NULL,
+    title = "Regimens per year",
+    subtitle = "Bars represent multiple imputation on birthdate (only know year)"
+  ) + 
+  scale_x_continuous(
+    breaks = seq(1992, 2092, by = 4)
+  ) + 
+  scale_color_manual(
+    values = c("#004488", "#997700", "#994455")
+  ) + 
+  # scale_fill_manual(
+  #   values = c("#6699cc", "#eecc66", "#ee99aa")
+  # ) + 
+  theme(
+    plot.title.position = "plot",
+    legend.position = "bottom"
+  ) + 
+  guides(
+    color = guide_legend(
+      title = NULL,
+      override.aes = list(
+        size = 3, linetype = 0, shape = 15, alpha = 1
+      )
+    )
+    
+  )
+
+ggsave(
+  gg_reg_yr,
+  file = here(
+    'output', 'aacr_ss24', 'img',
+    '01_drug_timing.pdf'
+  ),
+  height = 3, width = 6
+)
+
+```
+
+### *R1.2.3 Regimen year
+
+Vincent suggested we look at the distribution of the year in which regimens happened.  In GENIE we don't have exact dates, so this ends up being an exercise in estimation.  We have the following information for each participant:
+
+- Birth year.
+- Time from birth to diagnosis.
+- Time from diagnosis to regimen start.
+
+The missing information is month and day of birth.  To estimate regimen start year with this in mind, we can use multiple imputation on the missing information.  If we assume that birth dates are approximately evenly distributed, we can assume random birth dates for the participants.  Each time we do this, calculate a number of regimens which took place in each year.  By doing this thousands of times and taking the quantiles, we get a min/max (light lineranges) and median number of regimens (dark line) for each year.  This is repeated for metatstic and nonmetastatic regimens separately - All is just the sum of those two.  The following chart shows this:
+
+```{r, include = T}
+gg_reg_yr
+```
+
+**Observations:**
+
+- We might simplify this by saying most regimens are between 2012 and 2019.  
+- A more exact figure, like "X% of regimens most likely occured between 2012 and 2019" could be obtained by estimating the most likely year for each regimen.
+- Iterations on this are not too hard.  For example, year of first regimen.
+- Adding metastatic and nonmetastatic regimens doesn't convey a ton of surprising information:  The metatstatic regimens tend to be slightly later.  This is reflection of both cohort selection bias (you have to live long enough to be curated) and the fact that an individuals metastatic regimens follow their non-metatstatic ones by definition.
+- If we decide to share this we can clean up the look by adding a small horizontal offset so the errorbars don't overlap.  This also could be made cleaner by removing the "All" line if desired.
+
+
+
+
+
+### R1.2.4a Lines of therapy - strategy
+
+We define lines of therapy as a regimen of drugs started on or after the diagnosis of metastatic cancer.  This is similar to the concept of regimens as used in GENIE BPC with four important differences:
+
+- **Investigational Regimen:** Any regimen with an "Investigational drug" entry 
+- **Excluded drugs:** Regimens containing select drugs are excluded from being considered a line of therapy.  The drugs on the exclusion list are: `r paste(paste0('"', vec_lot_excluded_drugs, '"'), collapse = ", ")`.
+  - We also exclude any drug with a "non-standard" administration route.  At the time of writing this is almost exclusively BCG vaccines administered intravesicularly, so this is mostly redundant with the above.
+- **Repeat regimens:** Exact repeats of regimens are excluded from being considered a new line.  For example, if GemCis follows GemCis, GemCis is not considered a second regimen.
+- **Variation classes:** Some regimens are considered to be variants on others.  For example, if GemCis follows GemCarbo, then GemCis is not considered a second regimen, but ignored as a variant of the first.
+
+The following table shows the current list of variation classes (see appendix for GemCis class comment):
+
+```{r, include = T}
+dft_var_class %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+
+
+```{r, include = F}
+dft_drug %<>%
+  rename(
+    agent = drug
+  ) 
+
+dft_drug %<>%
+  mutate(
+    agent = str_replace_all(agent, "\\(.*", "")
+  )
+```
+
+
+```{r, include = F, eval = F}
+# This block is temporrary - just designed to find example cases.
+dft_met_timing <- dft_timing %>% 
+  select(record_id, ca_seq, tt_dmet_dx_yrs) %>%
+  filter(!is.na(tt_dmet_dx_yrs))
+```
+
+
+```{r, include = F}
+plt_lot_ex1 <- dft_drug %>%
+  filter(record_id %in% 'GENIE-DFCI-007779' & ca_seq %in% 0) %>% 
+  plot_drug(., return_plotly = T)
+
+plt_lot_ex2 <- dft_drug %>%
+  filter(record_id %in% 'GENIE-MSK-P-0017313' & ca_seq %in% 0) %>% 
+  plot_drug(., return_plotly = T)
+
+gg_lot_ex1 <- dft_drug %>%
+  filter(record_id %in% 'GENIE-DFCI-007779' & ca_seq %in% 0) %>% 
+  plot_drug(., return_plotly = F)
+
+gg_lot_ex2 <- dft_drug %>%
+  filter(record_id %in% 'GENIE-MSK-P-0017313' & ca_seq %in% 0) %>% 
+  plot_drug(., return_plotly = F)
+
+gg_lot_ex3 <- dft_drug %>%
+  filter(!agent %in% "Investigational Drug") %>%
+  filter(record_id %in% 'GENIE-MSK-P-0025120' & ca_seq %in% 0) %>% 
+  plot_drug(., return_plotly = F)
+
+gg_lot_ex4 <- dft_drug %>%
+  filter(!agent %in% "Investigational Drug") %>%
+  filter(record_id %in% 'GENIE-DFCI-003553' & ca_seq %in% 2) %>% 
+  plot_drug(., return_plotly = F)
+
+
+```
+
+#### Example 1
+
+We will show one example to demonstrate our algorithm for LoT.  The following figure show all the drugs used in a participant who was diagnosed with metastatic cancer (so all regimens are eligible based on timing).  This plot is interactive (on hover).
+
+```{r, include = T}
+plt_lot_ex1
+```
+
+The lines of therapy, following our rules, are:
+
+```{r, include = T}
+dft_lot %>% 
+  filter(record_id %in% 'GENIE-DFCI-007779' & !is.na(line_therapy)) %>%
+  select(line_therapy, regimen_number, regimen_drugs) %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+GemCarbo is considered a variation on GemCis, so it is not included as a line.
+
+#### Example 2
+
+Another simple example of ignoring the BCG Vaccine as a potential line.  This person was also diagnosed metastatic.
+
+```{r, include = T}
+plt_lot_ex2
+```
+
+The lines of therapy, following our rules, are:
+
+```{r, include = T}
+dft_lot %>% 
+  filter(record_id %in% 'GENIE-MSK-P-0017313' & !is.na(line_therapy)) %>%
+  select(line_therapy, regimen_number, regimen_drugs) %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+
+
+
+```{r}
+dfp_lot_common_met <- dft_lot %>%
+  get_lot_most_common_2(., max_line = 3) %>%
+  display_lot_most_common(.)
+```
+
+
+### R1.2.4b Lines of therapy - most common
+
+The following table shows the most common first, second and third line of therapy used in the metastatic setting according to the rules in R2.4a.
+
+```{r, include = T}
+dfp_lot_common_met %>%
+  rename(` ` = common) %>%
+  flextable %>%
+  autofit(.) %>%
+  flextable::width(j = 1, width = 1.75)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, eval = T}
+# Regimen dataset, joined with and limited to lines of therapy.
+dft_reg_lot <- dft_reg_dmet_s %>%
+  left_join(
+    ., 
+    select(dft_lot, record_id, ca_seq, regimen_number, line_therapy),
+    by = c('record_id', 'ca_seq', 'regimen_number')
+  ) %>%
+  filter(!is.na(line_therapy))
+
+dft_met_timing <- dft_timing %>% 
+  select(record_id, ca_seq, tt_dmet_dx_yrs) %>%
+  filter(!is.na(tt_dmet_dx_yrs))
+
+dft_reg_lot <- left_join(
+  dft_reg_lot,
+  dft_met_timing,
+  by = c("record_id", "ca_seq")
+)
+dft_reg_lot %<>%
+  mutate(
+    dmet_reg_start_int_yrs = dx_reg_start_int_yrs - tt_dmet_dx_yrs,
+    dmet_reg_end_any_int_yrs = dx_reg_end_any_int_yrs - tt_dmet_dx_yrs,
+    dmet_reg_end_all_int_yrs = dx_reg_end_all_int_yrs - tt_dmet_dx_yrs
+  )
+```
+
+
+```{r, eval = T}
+dft_lot_stats <- get_lot_stats_2(
+  dft_reg_lot,
+  time_vars = c(
+    "dx_reg_start_int_yrs", 
+    "dx_reg_end_all_int_yrs",
+    "dmet_reg_start_int_yrs", 
+    "dmet_reg_end_all_int_yrs"
+  )
+) 
+
+dfp_lot_stats <-  reshape_lot_stats(
+  dft_lot_stats,
+  n_denom = n_bladder_dmet
+)
+
+dfp_lot_stats %<>%
+  mutate( 
+    Quantity = case_when(
+      Quantity %in% "dx_reg_start_int_yrs" ~ "Dx -> Regimen start (yrs)",
+      
+      Quantity %in% "dx_reg_end_all_int_yrs" ~ "Dx -> End of all drugs (yrs)",
+      Quantity %in% "dmet_reg_start_int_yrs" ~ "Met -> Regimen start (yrs)",
+      Quantity %in% "dmet_reg_end_all_int_yrs" ~ "Met -> End of all drugs (yrs)",
+      T ~ Quantity
+    )
+  )
+
+dfp_lot_stats %<>% rename(` ` = Quantity)
+```
+
+
+### R1.2.4d Lines of therapy - time stats
+
+Time statistics for lines of therapy from both diagnosis (dx) and metastasis (met).  
+
+**Note:** The statistics for end of regimen timing are now flawed since our decision to include all investigational agents.  This is because investigational agents have a (junk) length of one day, so the statistics show a smaller number than reality.  I have left them in for now, but recommend we not report them.
+
+```{r, include = T}
+dfp_lot_stats %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+
+
+
+
+
+```{r}
+dft_highest_line <- dft_lot %>%
+  group_by(record_id, ca_seq) %>%
+  summarize(
+    highest_line = max(line_therapy, na.rm = T),
+    .groups = "drop"
+  )
+    
+dft_stats_by_line <- dft_ca_ind_dmet %>%
+  left_join(
+    .,
+    dft_met_timing,
+    by = c('record_id', 'ca_seq')
+  ) %>%
+  mutate(
+    tt_os_dmet_yrs = tt_os_dx_yrs - tt_dmet_dx_yrs
+  ) %>%
+  select(record_id, ca_seq, tt_os_dmet_yrs)
+
+dft_stats_by_line %<>%
+  left_join(
+    .,
+    dft_highest_line,
+    by = c('record_id', 'ca_seq'),
+    relationship = 'one-to-one'
+  ) 
+
+lev_high_line <- c(
+  "Zero",
+  "One",
+  "Two",
+  "Three+"
+)
+
+dft_stats_by_line %<>%
+  mutate(
+    lines_received_f = case_when(
+      is.na(highest_line) ~ lev_high_line[1],
+      highest_line %in% 1:2 ~ lev_high_line[highest_line + 1],
+      highest_line >= 3 ~ lev_high_line[4]
+    ),
+    lines_received_f = factor(lines_received_f, levels = lev_high_line)
+  ) %>%
+  rename(`Follow-up time` = tt_os_dmet_yrs) # without status indicator that's basically what it is.
+
+dft_stats_by_line <- dft_rad %>% 
+  select(record_id, ca_seq) %>%
+  mutate(`Had Radiation` = T) %>%
+  distinct(.) %>%
+  left_join(
+    dft_stats_by_line,
+    .,
+    by = c("record_id", "ca_seq")
+  ) %>%
+  replace_na(., list(`Had Radiation` = F)) %>%
+  arrange(ca_seq) %>%
+  mutate(
+    `Cancer seq (cat)` = case_when(
+      ca_seq %in% c(0) ~ "First and only",
+      ca_seq %in% c(1) ~ "First",
+      ca_seq %in% 2:10 ~ "Not first"
+    ),
+    `Cancer seq (cat)` = fct_inorder(`Cancer seq (cat)`)
+  ) 
+
+
+```
+
+
+### *R1.2.4e Lines of therapy - people stats 
+
+The following table shows the followup time for those who received exactly zero, one, two, or three+ lines of therapy according to our definition.
+
+```{r, include = T}
+gtsummary::tbl_summary(
+  select(
+    dft_stats_by_line, 
+    lines_received_f,
+    `Follow-up time`,
+    `Had Radiation`, 
+    `Cancer seq (cat)`
+  ),
+  by = lines_received_f
+)
+  
+```
+
+**Discussion**
+
+Our hypothesis previously was that people who received fewer lines of therapy probably had less followup time. This appears to be broadly true, except for those with zero lines of therapy, who had a greater amount of followup than any other group.  This motivated the lines added after follow-up time.
+
+Our initial hypothesis was that those with zero lines of therapy may have used radiation rather than drugs as their first course of treatment.  The opposite is true, people with zero lines of therapy had a lower frequency of radiation use.
+
+I added the cancer sequence information afterward, looking for an explanation.  It is odd (to me) that the rates of first vs "first and only" cancer sequences are so different between those with zero lines recorded and those with one or more recorded.
+
+We can change the table structure a bit to point something out more clearly:
+
+```{r, include = T}
+gtsummary::tbl_summary(
+  select(
+    dft_stats_by_line,
+    lines_received_f,
+    `Follow-up time`,
+    `Had Radiation`, 
+    `Cancer seq (cat)`
+  ),
+  by = `Cancer seq (cat)`
+)
+```
+
+If we just focus on those cases that are a first cancer, it seems implausible that those with multiple cancers ("First") were more likely to receive zero lines of therapy associated with cancer #1, even though they had much longer average followup times.  One possible explanation is the way regimens are associated with agent use in the curation.  For example, if a regimen was taken but not assigned as possibly related to the first cancer because the patient now has a newer cancer.  There are ways we could peel this back further looking at each case, but we're already at a major tangent with this sentence.
+
+One other comment, more to the point of this section:  If we limit to only first and only cancers, the followup time distribution looks as we would expect it to, with zero regimen people having shorter followup than those with one regimen:
+
+```{r, include = T}
+gtsummary::tbl_summary(
+  select(
+    filter(dft_stats_by_line, ca_seq %in% 0),
+    lines_received_f,
+    `Follow-up time`,
+    `Had Radiation`, 
+    `Cancer seq (cat)`
+  ),
+  by = lines_received_f
+)
+  
+```
+
+
+
+
+### *R1.2.5a Neoadjuvant therapy groups
+
+We define neoadjuvant therapy as any regimen which 
+
+1. Used agents on a list we specified, currently platinum based chemotherapies (see appendix for list).
+2. Meets one of the following two conditions:
+   a.  The regimen was started at least 3 months before metastatic diagnosis (for those who had a recorded metastasis).
+   b.  The regimen was taken by a participant without a recorded metastasis.
+
+While neoadjuvant therapy is sometimes defined relative to a primary surgery, a limitation in the BPC data is that we cannot tell the difference between transurethral bladder tumor resection (TURBT) and radical cystectomy, only that there was a surgical procedure.  This motivates the use of distant metastasis as a marker - it's something we can readily identify and it often aligns with the surgery time in practice.
+
+The following table shows how many people fit into the subgroups for neaoadjuvant therapy:
+
+```{r, include = T}
+gtsummary::tbl_summary(
+  select(
+    dft_reg_neo_cases,
+    `Neoadjuvant Treatment` = neoadj_case_f
+  )
+)
+```
+
+
+
+
+```{r}
+dft_neoadj_compare <- dft_ca_ind %>% 
+  select(
+    record_id, ca_seq, ca_tx_pre_path_stage
+  ) %>%
+  mutate(
+    ca_tx_pre_path_stage = case_when(
+      ca_tx_pre_path_stage %in% c("Not Applicable", "Unknown") ~ NA_character_,
+      T ~ ca_tx_pre_path_stage
+    ),
+    ca_tx_pre_path_stage = factor(ca_tx_pre_path_stage, levels = c("Yes", "No"))
+  ) %>%
+  select(
+    record_id, ca_seq, ca_tx_pre_path_stage
+  )
+
+
+dft_ever_met_cases <- dft_dmet_timing %>%
+  select(record_id, ca_seq)
+
+dft_neoadj_compare <- full_join(
+  dft_neoadj_compare,
+  (dft_reg_neo_cases %>%
+    select(record_id, ca_seq, neoadj_case_binary)),
+  by = c('record_id', 'ca_seq'),
+  relationship = "one-to-one"
+)
+
+gt_neo_compare_all <- dft_neoadj_compare %>%
+  tbl_cross(
+    data = .,
+    row = neoadj_case_binary,
+    col = ca_tx_pre_path_stage
+  )
+
+gt_neo_compare_ever_met <- dft_neoadj_compare %>%
+  right_join(., dft_ever_met_cases, by = c("record_id", "ca_seq")) %>%
+  tbl_cross(
+    data = .,
+    row = neoadj_case_binary,
+    col = ca_tx_pre_path_stage
+  )
+
+gt_neo_compare_never_met <- dft_neoadj_compare %>%
+  anti_join(., dft_ever_met_cases, by = c("record_id", "ca_seq")) %>%
+  tbl_cross(
+    data = .,
+    row = neoadj_case_binary,
+    col = ca_tx_pre_path_stage
+  )
+
+
+
+  
+  
+```
+
+### *R1.2.5b Comparison with PRISSMM neoadj
+
+PRISSMM has a variable which also addresses pathologic stage.  Here is the definition, pulled directly from the data guide:
+
+> **Neoadjuvant Chemotherapy or Radiation Therapy Before Pathologic Stage Diagnosis**
+> [ca_tx_pre_path_stage]
+> Description
+>
+>     - Indicates whether patient received neoadjuvant chemotherapy or radiation therapy before pathologic stage diagnosis
+>.    - Populated only if cancer was not diagnosed at stage IV ([ca_stage_iv] = “No”)
+
+There are enormous differences between our characterization and what's been done here.  Major differences: (1) the reference time is pathologic stage diagnosis (not met), (2) this includes radiation and (3) de novo metastatic patients are completely excluded from consideration.
+
+All the same, here is a 2x2 table for our variables of interest:
+
+```{r, include = T}
+gt_neo_compare_all
+```
+
+Notes:
+
+- Even though the definitions are wildly different there should be some correlation between the two variables and there is (on-diagonal terms clearly have greater numbers than off-diagonal).  
+- Here are some reasonable explanations for why we should expect people in the off-diagonal groups:
+  - *Neoadj. Exposure + No*:  Drugs used from pathologic dx to met (different index time) would count.
+  - *No neoadjuvant exposure + Yes*: Radiation therapy uses.
+  - Either one:  Different list of what qualifies as chemotherapy.
+
+
+
+
+```{r}
+# split here indicates that it's split into sub-tables for met_neoadj_case_f
+dft_lot_split <- dft_lot %>%
+  left_join(
+    .,
+    select(dft_reg_neo_cases, record_id, ca_seq, neoadj_case_binary),
+    by = c("record_id", "ca_seq"),
+    relationship = "many-to-one"
+  )  %>%
+  tidyr::nest(
+    .data = .,
+    .by = "neoadj_case_binary",
+    .key = "lot" # just renames the nested column
+  )
+
+# Do the same steps we did above for the list-column of separated tables:
+dft_lot_split %<>%
+  mutate(
+    lot_common = purrr::map(
+      .x = lot,
+      .f = \(x) {
+          get_lot_most_common_2(x, max_line = 3) 
+      }
+    ),
+    lot_common_disp = purrr::map(
+      .x = lot_common,
+      .f = (\(x) display_lot_most_common(x))
+    ),
+    lot_common_ft = purrr::map(
+      .x = lot_common_disp,
+      .f = (\(x) {
+        x %>%
+          rename(` ` = 1) %>%
+          flextable %>%
+          autofit
+      })
+    )
+  )
+
+heading_helper <- function(row_id) {
+  paste0(
+    as.character(dft_lot_split[[row_id, "neoadj_case_binary"]]), " (n=",
+    nrow(count(dft_lot_split[[row_id, "lot"]][[1]], record_id)), ")"
+  )
+}
+
+neoadj_heading_1 <- heading_helper(1)
+neoadj_heading_2 <- heading_helper(2)
+
+```
+
+
+### *R1.2.5c Lines w.r.t neoadjuvant therapy groups
+
+The following tables are the same as above, just split into three tables based on neoadjuvant treatment history.
+
+#### `r neoadj_heading_1`
+
+```{r, include = T}
+dft_lot_split[[1, "lot_common_ft"]][[1]]
+```
+
+#### `r neoadj_heading_2`
+
+```{r, include = T}
+dft_lot_split[[2, "lot_common_ft"]][[1]]
+```
+
+
+
+
+
+```{r}
+n_neoadj_met <- dft_reg_neo_cases %>%
+  filter(neoadj_case_f %in% 'Neoadjuvant, started >=3 months prior to met') %>%
+  nrow(.)
+```
+
+### *R1.2.5d Metastatic + neoadjuvant subgroups
+
+In the R2.5a we reported that there were `r n_neoadj_met` people who had neoadjuvant therapy which started at least 3 months before their metastatic diagnosis.  There was additional interest in subgroups for those who started therapy more or less than 1 year prior to the metastatic diagnosis.  Here are those numbers:
+
+```{r, include = T}
+dft_reg_neo_cases %>%
+  filter(neoadj_case_f %in% 'Neoadjuvant, started >=3 months prior to met') %>%
+  mutate(
+    tt_met_from_first_neoadjuvant = case_when(
+      tt_met_first_neoadj_start >= 1 ~ "More than one year",
+      tt_met_first_neoadj_start < 1 ~ "Less than one year"
+    )
+  ) %>%
+  select(tt_met_from_first_neoadjuvant) %>%
+  gtsummary::tbl_summary(.)
+```
+
+
+
+
+
+## Appendices
+
+### Details
+
+#### *Neoadjuvant therapies list
+
+As explained in some of the sections above, we define neoadjuvant therapy as therapy that occurred prior to **metastasis** and the drugs used in the regimen.  The drugs which we counted are mostly platinum-based chemotherapies.  The complete list of regimens which we counted as neoadjuvant iff they occurred before metastasis includes the following:
+
+```{r, include = T}
+dft_neoadj_therapy_key %>%
+  filter(valid_neoadjuvant_drug) %>%
+  select(regimen_drugs)
+```
+
+This list was arrived at by listing all the drugs administered before metastasis and deciding in a meeting which ones would or would not count.  The general goal was to adhere to well-known neoadjuvant therapies.
+
+
+
+
+
+```{r}
+n_erdafitinib <- dft_reg %>% 
+  filter(str_detect(tolower(regimen_drugs), "erdafitinib")) %>%
+  pull(record_id) %>%
+  unique %>%
+  length
+```
+
+#### *Erdafitinib
+
+In our Dec 2023 Maria asked if there are any patients who received Erdafitinib.  The answer is yes, but only `r n_erdafitinib`, all from MSK, which probably leaves us with too few for most analyses.
+
+#### Variation class for GemCis
+
+We have the following variation class defined:
+
+```{r, include = T}
+dft_var_class %>%
+  filter(var_class %in% 1) %>%
+  flextable(.) %>%
+  autofit(.)
+```
+
+
+```{r}
+dft_var_class_one_similar <- dft_reg_dmet_s %>% 
+  filter(!str_detect(regimen_drugs, "Investigational Drug")) %>%
+  select(record_id, ca_seq, regimen_drugs) %>%
+  mutate(
+    has_carbo = str_detect(regimen_drugs, "Carboplatin"),
+    has_cis = str_detect(regimen_drugs, "Cisplatin")
+  ) %>%
+  filter(has_carbo | has_cis) %>%
+  count(regimen_drugs, sort = T) %>%
+  filter(
+    !(regimen_drugs %in% pull(filter(dft_var_class, var_class %in% 1), regimen_drugs))
+  ) %>%
+  rename(
+    n_reg = n
+  )
+```
+
+**Question:** Should we additionally include any of these regimens in this class of regimens?  `n_reg` is the number of regimens which have a given drug combination and were started on/after metastasis.
+
+```{r, include = T}
+dft_var_class_one_similar %>%
+  flextable(.) %>%
+  autofit(.) 
+```
+
+
+#### Stage IV vs Metastatic at diagnosis
+
+Just a note:  The variable `ca_dmets_yn` is only populated for participants who are stage IV at diagnosis.  Here is a cross tabulation of this variable with `stage_dx` (columns):
+
+```{r, include = T}
+dft_ca_ind %>% tabyl(ca_dmets_yn, stage_dx_iv)
+```
+
+
+
+
+
+```{r}
+
+dft_reg_thru_met <- left_join(
+  select(
+    dft_reg,
+    record_id, ca_seq, regimen_drugs,
+    dx_reg_start_int,
+    dx_reg_end_all_int
+  ),
+  dft_met_timing,
+  by = c('record_id', 'ca_seq')
+)
+
+dft_reg_thru_met %<>%
+  filter(!is.na(tt_dmet_dx_yrs)) %>%
+  mutate(tt_dmet_dx_days = tt_dmet_dx_yrs * 365.25) %>%
+  # drug started before met with a half-day tolerance for rounding
+  filter(dx_reg_start_int < (tt_dmet_dx_days + 0.5)) %>%
+  # drug ended after met with a half-day tolerance for rounding
+  filter(dx_reg_end_all_int > (tt_dmet_dx_days - 0.5))
+
+dft_reg_thru_met %<>%
+  mutate(
+    dmet_reg_start_days = dx_reg_start_int - tt_dmet_dx_days,
+    dmet_reg_end_days = dx_reg_end_all_int - tt_dmet_dx_days
+  ) %>%
+  arrange(desc(dmet_reg_end_days)) %>%
+  mutate(
+    y_pos = 1:n(),
+    # rounded to one digit here so I could see if there were odd things:
+    lab = glue(
+      "Record ID: {record_id},
+      Ca Seq: {ca_seq},
+      Regimen drugs: {regimen_drugs},
+      Start time (rel to met): {round(dmet_reg_start_days,1)} days,
+      End of all drugs (rel to met): {round(dmet_reg_end_days,1)} days"
+    )
+  )
+
+gg_reg_thru_met <- ggplot(
+  dft_reg_thru_met,
+  aes(
+    xmin = dmet_reg_start_days,
+    xmax = dmet_reg_end_days,
+    ymin = y_pos - 0.4,
+    ymax = y_pos + 0.4,
+    text = lab
+  )
+) + 
+  geom_rect(fill = "#3E6990") + 
+  theme_bw() +
+  labs(
+    title = "Cases where a regimen spans a metastatic diagnosis",
+    subtitle = "Hover for more info",
+    x = "Days relative to metastatic diagnosis"
+  ) + 
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank()
+  )
+
+plt_reg_thru_met <- ggplotly(gg_reg_thru_met, tooltip = "text")
+
+
+```
+
+#### *Therapies continued through met
+
+A subtle assumption in our methods above is that few therapies are continued through a metastatic diagnosis.  This follows because we define lines of therapy as only including regimens started on or after diagnosis.  Therefore, a regimen started before a met diagnosis and continued after would not show up in our LoT tables.
+
+A basic question on this subject is "How often does it happen that someone continues a regimen through a met diagnosis?".  We observe `r nrow(dft_reg_thru_met)` occurences of this in our `r nrow(dft_met_timing)` metastatic cases.  The following figure displays more information about how this timing looks relative to met diagnosis for each:
+
+
+```{r, include = T}
+plt_reg_thru_met
+```
+
+Notes:
+
+- Several which are not a problem at all:  BCG vaccine or those stopped days after dx.
+- Mostly platinum-based chemo regimens otherwise.
+- Possible actions: (1) ignore them, default solution or (2) split  regimens at metastasis so they are counted in LoT tables.
+
+
+```{r}
+icd_map_custom <- readr::read_csv(
+  here(
+    'data-raw', 'manual', 'icd_map_custom.csv'
+  )
+)
+```
+
+#### Custom met locations
+
+The table shown in R1.6e works from the imaging data and creates new categories for metastasis.  This requires mapping ICD codes from the image that showed evidence of cancer to a category.  This table shows those mapping choices.
+
+Definitions of the columns shown here:
+
+- `is_local`: Is this icd code a local location to bladder cancer?  The starting point for these choices was revewing the data guide, created by the MSK stats team.  If `is_local = TRUE` then this ICD code will not represent a distant metastasis in our re-analysis.
+- `map_custom`: Our new categories.
+- `icd_code`: The ICD code, pulled from {`image_casite1`, ...,  `image_casite15`} in the BPC data.
+- `n_times_reported`: The total number of times this `icd_code` pops up in our data (more than one per person possible).
+
+```{r, include = TRUE}
+icd_map_custom %>%
+  select(-c(Map,notes)) %>% # confusing, Map is an intermediary map provided by Neil. 
+  dt_wrapper(.)
+```
+
+
+
+
+
+### Issues
+
+#### Pathologic N stage
+
+On Sept 25, 2023 we discussed pathologic N stage and that it may only make sense for participants who have had surgery.  The sticking point here is I don't know if we have that information in our dataset.  If anyone with the appropriate clinical knowledge would be willing to search that data guide that may help.
+
+Additionally, here is what the data guide tells us for the variable used to report Pathologic N stage (`ca_path_n_stage`):
+
+> Description
+> 
+>    - Curated pathologic N stage
+>    - N describes spread of cancer to nearby lymph nodes 
+>    - Populated only if:
+>    - Cancer diagnosis is curated. This field is blank for cancer diagnoses obtained from the tumor registry.
+>    - Cancers was not diagnosed at stage IV ([ca_stage_iv] = “No”).
+
+It may be that this is not important to report - I don't have a great reason for having included it in the first place.  There are loads of other choices for staging variables.
+
+#### Regimen length + investigational regimens
+
+Including investigational regimens means we cannot have accurate time statistics because investigational regimens all have a coded length of 1 day.  We can still report intervals from diagnosis/met to regimen start without issue.
+
+#### *Name for "neoadjuvant" therapy
+
+We're currently using the term "neoadjuvant therapy" for platinum based chemotherapies which were started before metastatic diagnosis.  In our January 2024 meeting we discussed whether there might be a better term.  In particular, it was suggested that "perioperative" therapy might be a better term.
+
+I did not push this change through because we are currently not even looking at whether a person has a surgery at all.
+
+### Todos
+
+- Add swimmer plot.
+- Categorize drugs in therapy lines by class?
+- Parse lymph node metastases as a separate group from 'thorax' or 'abdomen'.  Underway effort by MSK teams - Neil checking on our ability to use.
+
+
+
+```{r, output_for_clinicians, eval = F}
+# This needs to be manually run, it's just output files 
+# for the unique regimens and drugs.
+reg_sum <- dft_reg %>%
+  select(record_id, ca_seq, regimen_drugs) %>%
+  group_by(regimen_drugs) %>%
+  summarize(
+    n_reg = n(),
+    n_pts = length(unique(record_id))
+  )
+
+drug_sum <- dft_reg %>%
+  select(record_id, ca_seq, regimen_number, matches("^drugs_drug_")) %>%
+  pivot_longer(
+    cols = matches("^drugs_drug_"),
+    names_to = "drug_number",
+    values_to = "drug"
+  ) %>%
+  filter(!is.na(drug)) %>%
+  group_by(drug) %>%
+  summarize(
+    n_uses = n(),
+    n_pts = length(unique(record_id))
+  ) %>%
+  # just a start!
+  mutate(
+    class = case_when(
+      str_detect(drug, "Cisplatin") ~ "platinum-based chemo",
+      str_detect(drug, "Paclitaxel") ~ "taxane",
+      T ~ NA_character_
+    )
+  )
+      
+
+readr::write_csv(
+  x = reg_sum,
+  file = here('output', 'other', 'unique_regimens.csv'),
+  na = ''
+)
+
+readr::write_csv(
+  x = drug_sum,
+  file = here('output', 'other', 'unique_drugs.csv'),
+  na = ''
+)
+```
+
+
+```{r, output_for_clinicians_2, eval = F}
+# Update:  Also need a reg-sum dataset which is just for the ponteitally
+#   neoadjuvant treatments.  Potentially neoadjuvant is a made up term meaning
+#   that the regimen was started before treatment.
+reg_sum_pre_met <- dft_reg_non_met %>% # see above for this derivation
+  select(record_id, ca_seq, regimen_drugs) %>%
+  group_by(regimen_drugs) %>%
+  summarize(
+    n_reg = n(),
+    n_pts = length(unique(record_id))
+  ) %>%
+  arrange(desc(n_pts)) 
+
+# Filling in a few that we discussed during the meeting just to start us off:
+reg_sum_pre_met %<>%
+  mutate(
+    valid_neoadjuvant = case_when(
+      regimen_drugs %in% c("BCG Vaccine", "BCG Solution") ~ "no",
+      str_detect(regimen_drugs, "Carboplatin|Cisplatin") ~ "yes",
+      T ~ NA_character_
+    )
+  )
+      
+readr::write_csv(
+  x = reg_sum_pre_met,
+  file = here('output', 'other', 'potential_neoadjuvant_regimens.csv'),
+  na = ''
+)
+
+reg_sum_pre_met %>% 
+  pull(regimen_drugs) 
+
+  
+```
+
+## Analysis ideas for future work
+
+- Suggested on Oct 09, 2023:  Can we analyze whether people with common patterns of metastasis (for exmaple, primary -> lymph -> bone) have better outcomes?
+  - This is complicated because we have to deal with the potential for bias in people who drop out (due to death or censoring) before they can develop a longer chain of metastatic locations.  Probably requires a time-varying model which would be a lot to bite off for this particular paper.
+  

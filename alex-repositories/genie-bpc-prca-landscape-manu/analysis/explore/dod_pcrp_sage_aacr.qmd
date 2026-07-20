@@ -1,0 +1,207 @@
+---
+title: "DoD PCRP notes"
+subtitle: "Not a part of the manuscript work - for Sage/AACR proposal"
+author: "Alex Paynter"
+date: "`r Sys.Date()`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    theme: sandstone 
+execute:
+  echo: true
+  include: true
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+#| include: false
+#| echo: false
+library(purrr); library(here); library(fs)
+purrr::walk(.x = fs::dir_ls(here('R')), .f = source) # also loads lots of packages.
+```
+
+
+```{r}
+#| include: false
+#| echo: false
+read_wrap_clin <- function(p) {
+  read_rds(file = here("data", 'clin', p))
+}
+
+dft_pt <- read_wrap_clin("dft_pt.rds")
+dft_ca_ind <- read_wrap_clin("dft_ca_ind.rds")
+# we're taking the augmented version, which has TMB columns added.  The existing info is the same.
+dft_cpt <- read_wrap_clin("dft_cpt_aug.rds")
+dft_tm <- read_wrap_clin("dft_tm.rds")
+```
+
+## Introduction
+
+This report is a place to collate numbers for a grant submission.
+
+## A litany of numbers
+
+**Number in the cohort:** Specifically we pull index cases:
+
+```{r}
+nrow(dft_ca_ind)
+```
+
+**Number and percent metatstatic in the cohort:**
+
+```{r}
+n_met <- nrow(get_dmet_time(dft_ca_ind))
+n_met
+n_met / nrow(dft_ca_ind)
+```
+
+A bit more context on what we mean by metastatic people:
+
+```{r}
+get_dmet_time(dft_ca_ind, annotate_type = T) %>%
+  count(.met_type)
+```
+
+All cases in the BPC prostate cohort have at least one next-generation sequencing test. Here's what that means for mutations, CNAs and fusions:
+
+
+```{r}
+#| echo: false
+dft_cpt <- read_wrap_clin("dft_cpt_aug.rds")
+
+read_wrap_geno <- function(p) {
+  read_rds(file = here("data", 'genomic', p))
+}
+
+dft_gp_all <- read_wrap_geno('gene_panel_all.rds')
+
+dft_gp_all %>% 
+  group_by(cpt_seq_assay_id) %>%
+  summarize(
+    any_mut = any(tested),
+    any_cna = any(tested_cna),
+    any_fusion = any(tested_fusion),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    select(dft_cpt, record_id, cpt_seq_assay_id),
+    .,
+    by = "cpt_seq_assay_id"
+  ) %>%
+  group_by(record_id) %>%
+  summarize(
+    any_mut = any(any_mut),
+    any_cna = any(any_cna),
+    any_fus = any(any_fusion),
+    .groups = "drop"
+  ) %>%
+  summarize(
+    people_with_gte_one_sample_testing_mut = n_pct_str(sum(any_mut), nrow(dft_ca_ind)),
+    people_with_gte_one_sample_testing_cna  = n_pct_str(sum(any_cna), nrow(dft_ca_ind)),
+    people_with_gte_one_sample_testing_sv = n_pct_str(sum(any_fus), nrow(dft_ca_ind))
+  ) %>% 
+  glimpse
+
+
+    
+```
+
+
+```{r}
+dft_psa_first <- dft_tm %>%
+  filter(tm_type %in% "PSA") %>%
+  psa_test_unit_convert() %>%
+  filter(!is.na(tm_num_result_conv))
+
+dft_psa_first %<>%
+  group_by(record_id) %>%
+  arrange(abs(dx_tm_days)) %>%
+  slice(1) %>%
+  ungroup(.)
+
+```
+
+**PSA (closest to dx)**
+
+For this we're taking the PSA value closest to diagnosis (before or after), which will increase the number of non-missing values compared to insisting on a baseline value. 
+
+The number of **MISSING** PSA values is:
+ 
+```{r}
+nrow(dft_ca_ind) - nrow(dft_psa_first)
+```
+
+
+The median, first quartile, third quartile summary for PSA nearest dx is:
+
+```{r}
+quantile(
+  dft_psa_first$tm_num_result_conv,
+  probs = c(0.5, 0.25, 0.75)
+)
+```
+
+The timing of those PSA observations (median, Q1, Q3) in years is:
+
+```{r}
+quantile(
+  dft_psa_first$dx_tm_yrs,
+  probs = c(0.5, 0.25, 0.75)
+)
+```
+
+So quite a bit after diagnosis of prostate cancer in some cases (which I find interesting since the tumor marker dataset should contain all serum markers).
+
+
+```{r}
+dft_psa_max <- dft_tm %>%
+  filter(tm_type %in% "PSA") %>%
+  psa_test_unit_convert() %>%
+  filter(!is.na(tm_num_result_conv))
+
+dft_psa_max %<>%
+  group_by(record_id) %>%
+  arrange(desc(tm_num_result_conv)) %>%
+  slice(1) %>%
+  ungroup(.)
+
+```
+
+
+**PSA (max)**
+
+Also doing a maximum for each person
+
+The number of **MISSING** PSA values is:
+ 
+```{r}
+nrow(dft_ca_ind) - nrow(dft_psa_max)
+```
+
+
+The median, first quartile, third quartile summary for PSA nearest dx is:
+
+```{r}
+quantile(
+  dft_psa_max$tm_num_result_conv,
+  probs = c(0.5, 0.25, 0.75)
+)
+```
+
+The timing of those PSA observations (median, Q1, Q3) in years is:
+
+```{r}
+quantile(
+  dft_psa_max$dx_tm_yrs,
+  probs = c(0.5, 0.25, 0.75)
+)
+```
+
+So quite a bit after diagnosis of prostate cancer in some cases (which I find interesting since the tumor marker dataset should contain all serum markers).

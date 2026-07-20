@@ -1,0 +1,19 @@
+table: med_onc
+sort_by:
+- record_id
+columns:
+  cohort: no
+  phase: no
+  record_id: yes
+  institution: no
+  md_visit_number: no
+  md_onc_visit_int: no
+  dx_md_visit_days: no
+  dx_md_visit_mos: no
+  dx_md_visit_yrs: no
+  md_type_ca_cur: no
+  md_ca: no
+  md_ca_status: no
+  md_ecog: no
+  md_karnof: no
+  release_version: no

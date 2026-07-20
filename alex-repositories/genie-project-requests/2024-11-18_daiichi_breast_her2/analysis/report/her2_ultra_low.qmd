@@ -1,0 +1,99 @@
+---
+title: "HER2 ultra low"
+subtitle: "Superset projections into main GENIE projections"
+author: "Alex Paynter"
+date: "`r format(Sys.Date(), '%d %b %Y')`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 4
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+
+
+
+```{r}
+library(here); library(purrr); library(fs)
+purrr::walk(fs::dir_ls(here('R')), .f = source)
+```
+
+```{r}
+ie_oncotree <- readr::read_rds(
+    here('data', 'incl_excl_oncotree.rds')
+)
+```
+
+
+## Introduction
+
+We received a request about HER2 ultra-low patients in GENIE BPC.  This can't be counted without going back to the IHC slides, since HER2 ultra-low is a result that sits between IHC = 0 and IHC = 1.  In order to start looking at this, we will count the number of people who have a negative ISH and an IHC score of zero in BPC breast.  This is the pool of people who could **possibly** be HER2 ultra-low.  We will then project the proportion of BPC into main GENIE to get estimated numbers of people meeting this criterion in main GENIE.
+
+Oncotree code of the sample is used to figure out which main GENIE participants have breast cancer.  We used the BPC breast cancer oncotree codes for an inclusion list.  Specifically, this means
+
+- **Included oncotree codes:** `r paste(ie_oncotree$incl, collapse = ', ')`
+- **Excluded oncotree codes (but still has parent "Breast" in Oncotree)":** `r paste(ie_oncotree$excl, collapse = ', ')`
+
+This is easy to re-run if changes are needed.  The excluded oncotree codes represented about 5% of samples falling under the "Breast" category, so it's not a major impact to exclude them, even though the list may look long.
+
+We are using 17.4-consortium to estimate (direct plug-in) the number of people we expect in the 17.1 public release.  The accrual numbers use this, plus releases from 11.1-public through 16.1-public to estimate the rate of accruals.  In other words, the estimate is based on the last 3 years of data (Jan 2022 - Jan 2025).
+
+```{r}
+proj_past <- readr::read_rds(
+    here('data', 'projections_past.rds')
+)
+
+proj_acc <- readr::read_rds(
+    here('data', 'projections_acc.rds')
+)
+```
+
+## Attrition tables
+
+The following table shows the number of people in BPC meeting the criteria, and the number in main GENIE by region (Total, US, Europe, Canada).  The table is cumulative as you work down the steps.  Gray numbers are projected, black are counted.
+
+```{r}
+#| include: true
+proj_past %>% 
+    select(step, BPC = n_bpc, Total, US, Europe, Canada) %>%
+    flextable(.) %>%
+    bg(j = 2, bg = '#ebf7ff') %>%
+    bg(j = 3:6, bg = '#fff0e8') %>%
+    color(i = 2:nrow(proj_past), j = 3:6, color = 'gray60') %>% 
+    autofit(.)
+```
+
+This table shows the number of people we are accruing each year in main GENIE (BPC column is the same, a count):
+
+```{r}
+#| include: true
+proj_acc %>% 
+    select(step, BPC = n_bpc, Total, US, Europe, Canada) %>%
+    flextable(.) %>%
+    bg(j = 2, bg = '#ebf7ff') %>%
+    bg(j = 3:6, bg = '#fff0e8') %>%
+    color(i = 2:nrow(proj_past), j = 3:6, color = 'gray60') %>%
+    autofit(.)
+```
+
+*Notes:*
+
+- The europe slope is obviously negative.  This appears correct, the number we have in main GENIE has gone down the last year or so.
+
+## Other requests
+
+Bundled with this request, we were asked how many mNSCLC patients were HER2+.  We don't have IHC or ISH values recorded for lung cancer, so this isn't something we can provide an estimate for using BPC.  
+
+
+

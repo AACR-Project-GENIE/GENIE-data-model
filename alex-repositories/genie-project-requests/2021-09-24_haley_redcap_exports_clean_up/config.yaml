@@ -1,0 +1,62 @@
+synapse:
+  exports:
+    id: syn20852283
+    name: External REDCap exports
+    type: folder
+    description: destination folder for site uploads
+  archive:
+    id: syn21452709
+    name: archive
+    type: folder
+    description: archive folder for ExternalREDCap exports
+upload:
+  BrCa:
+    DFCI:
+      data1: syn26160187
+      header1: syn25981842
+      data2: syn26160184
+      header2: syn25981841
+    MSK:
+      data1: syn24202045
+    VICC:
+      data1: syn24201984
+  CRC:
+    DFCI:
+      data1: syn25961098
+      header1: syn25961099
+    MSK:
+      data1: syn25953196
+    VICC:
+      data1: syn25961124
+  NSCLC:
+    DFCI:
+      data1: syn25582436
+      header1: syn25582427
+    MSK:
+      data1: syn25557012
+    UHN:
+      data1: syn25686838
+    VICC:
+      data1: syn25579921
+  PANC:
+    DFCI:
+      data1: syn25544638
+      header1: syn25544639
+    MSK:
+      data1: syn25541828
+    UHN:
+      data1: syn26033209
+    VICC:
+      data1: syn25541702
+  Prostate:
+    DFCI:
+      data1: syn26230815
+      header1: syn25592217
+    MSK:
+      data1: syn26230493
+    UHN:
+      data1: syn26212729
+    VICC:
+      data1: syn26231094
+misc:
+  debug: TRUE

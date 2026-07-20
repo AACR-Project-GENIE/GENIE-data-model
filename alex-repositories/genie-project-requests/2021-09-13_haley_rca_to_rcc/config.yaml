@@ -1,0 +1,90 @@
+synapse:
+  synid_file_grs: syn24184523
+  synid_table_prissmm: syn22684834
+  synid_folder_rcc_exports: syn24609065
+upload:
+  BrCa:
+    DFCI:
+      data1: syn26160187
+      header1: syn25981842
+      data2: syn26160184
+      header2: syn25981841
+    MSK:
+      data1: syn24202045
+    VICC:
+      data1: syn24201984
+  CRC:
+    DFCI:
+      data1: syn25961098
+      header1: syn25961099
+    MSK:
+      data1: syn25953196
+    VICC:
+      data1: syn25961124
+  NSCLC:
+    DFCI:
+      data1: syn25582436
+      header1: syn25582427
+    MSK:
+      data1: syn25557012
+    UHN:
+      data1: syn25686838
+    VICC:
+      data1: syn25579921
+  PANC:
+    DFCI:
+      data1: syn25544638
+      header1: syn25544639
+    MSK:
+      data1: syn25541828
+    UHN:
+      data1: syn26033209
+    VICC:
+      data1: syn25541702
+  Prostate:
+    DFCI:
+      data1: syn25592216
+      header1: syn25592217
+    MSK:
+      data1: syn25591851
+    UHN:
+      data1: syn25586093
+    VICC:
+      data1: syn25592242
+output:
+  BrCa: 
+    id: syn24609066
+    skip: 35
+  CRC: 
+    id: syn25578083
+    skip: NA
+  NSCLC: 
+    id: syn25570730
+    skip: NA
+  PANC: 
+    id: syn25578183
+    skip: NA
+  Prostate: 
+    id: syn25610356
+    skip: 36
+column_name:
+  variable_name: "Variable / Field Name"
+  form_name: "Form Name"
+  field_type: "Field Type"
+  variable_mapping: "Choices, Calculations, OR Slider Labels"
+  variable_type: "Text Validation Type OR Show Slider Number"
+  variable_min: "Text Validation Min"
+  variable_max: "Text Validation Max"
+  rs_label: "Response Set Label"
+  rs_value: "Response Set Values"
+mapping:
+  complete:
+    0: "Data Entry Not Started"
+    1: "Data Entry Started"
+    2: "Completed"
+    5: "Monitoring Complete"
+    6: "Form Removed"
+    7: "Form Locked"
+    8: "Form Signed"
+misc:
+  debug: TRUE

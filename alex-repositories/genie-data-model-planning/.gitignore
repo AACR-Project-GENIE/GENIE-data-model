@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+*.html
+*.png
+*.css
+*.js
+*.woff
+
+/data-raw/
+/data/
+
+/analysis/explore/data_dictionary_versions/

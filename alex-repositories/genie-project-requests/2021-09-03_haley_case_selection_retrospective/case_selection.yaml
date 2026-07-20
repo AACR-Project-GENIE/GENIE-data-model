@@ -1,0 +1,89 @@
+---
+files:
+  Bladder:
+    DFCI: 
+      id: syn22311990
+      version: 7
+    MSK: 
+      id: syn22311984
+      version: 7
+    UHN: 
+      id: syn22311993
+      version: 7
+    VICC: 
+      id: syn22311987
+      version: 7
+  BrCa:
+    DFCI: 
+      id: syn22157552
+      version: 3
+    MSK: 
+      id: syn22157548
+      version: 3
+    VICC: 
+      id: syn22157550
+      version: 2
+#  CRC:
+#    DFCI: 
+#      id: syn21519641
+#      version: 1
+#    MSK: 
+#      id: syn21519637
+#      version: 1
+#    VICC: 
+#      id: syn21519639
+#      version: 2
+  NSCLC:
+    DFCI: 
+      id: syn26072236
+      version: 3
+    MSK: 
+      id: syn26072238
+      version: 3
+    UHN: 
+      id: syn26072242
+      version: 3
+    VICC: 
+      id: syn26072245
+      version: 3
+  PANC:
+    DFCI: 
+      id: syn22311792
+      version: 8
+    MSK: 
+      id: syn22311766
+      version: 8
+    UHN: 
+      id: syn22311795
+      version: 8
+    VICC: 
+      id: syn22311789
+      version: 8
+  Prostate:
+    DFCI: 
+      id: syn22311916
+      version: 7
+    MSK: 
+      id: syn22311911
+      version: 7
+    UHN: 
+      id: syn22311919
+      version: 7
+    VICC: 
+      id: syn22311913
+      version: 7
+pilot_count:
+  DFCI: 15
+  MSK: 15
+  UHN: 10
+  VICC: 10
+sdv_percentage:
+  DFCI: 20
+  MSK: 20
+  UHN: 20
+  VICC: 20
+irr_percentage:
+  DFCI: 5
+  MSK: 5
+  UHN: 5
+  VICC: 5

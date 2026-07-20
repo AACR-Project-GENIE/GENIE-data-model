@@ -1,0 +1,120 @@
+#' Build derived variable table for cancer diagnosis form
+#'
+#' @param tab Cancer diagnosis form from the raw redcap.
+#' @param dat_dict_sub The subset of the data dictionary with variables for this instrument.
+#' @param cast_to_double Character vector of column names to coerce to
+#'   `double` at the end of the function. Defaults to `"tr_eligible"`.
+#'
+#' @returns A dataframe similar to ca_dx with additional derivations.
+#' @export
+#'
+#' @examples # Going to need synthetic data probably...
+build_dv_tab_ca_dx <- function(
+  tab,
+  dat_dict_sub,
+  cast_to_double = c("tr_eligible", 'age_dx')
+) {
+  raw_ca_dx <- column_exclusion_helper_derived(tab)
+
+  rtn <- common_data_derivation_operations(
+    dat = raw_ca_dx,
+    dict = dat_dict_sub
+  )
+
+  rtn <- rtn %>%
+    dplyr::mutate(
+      dob_ca_dx_days = dplyr::case_when(
+        is.na(ca_cadx_int) ~ naaccr_diagnosis_int,
+        T ~ ca_cadx_int
+      )
+    )
+
+  # Add the record level annotations that are jammed into this data for some reason.
+  rtn <- rtn %>%
+    dplyr::group_by(record_id) %>%
+    dplyr::mutate(
+      n_cancers = dplyr::n(),
+      n_cancers_index = sum(redcap_ca_index %in% "Yes")
+    ) %>%
+    dplyr::ungroup(.)
+
+  # rearrange the cancer diagnosis form according to the arcane logic in BPC.
+  rtn <- rtn %>%
+    dplyr::group_by(record_id) %>%
+    # break ties by keeping the order of redcap_ca_seq
+    dplyr::arrange(dob_ca_dx_days, redcap_ca_seq) %>%
+    dplyr::mutate(
+      ca_seq = dplyr::case_when(
+        n_cancers %in% 1 ~ 0,
+        T ~ 1:dplyr::n()
+      )
+    ) %>%
+    dplyr::ungroup(.)
+
+  rtn <- rtn %>%
+    dplyr::relocate(ca_seq, .after = record_id)
+
+  rtn <- add_institution(rtn)
+
+  rtn <- rtn |>
+    dplyr::mutate(
+      ca_dx_how = map_ca_dx_how(ca_dx_how),
+      ca_type = map_ca_type(ca_type),
+      ca_d_site = map_ca_d_site(ca_site),
+      ca_clin_t_stage = map_ca_clin_t_stage(ca_clin_t_stage),
+      ca_clin_t1_det = map_ca_clin_t1_det(ca_clin_t1_det),
+      ca_clin_t2_det = map_ca_clin_t2_det(ca_clin_t2_det),
+      ca_clin_t3_det = map_ca_clin_t3_det(ca_clin_t3_det),
+      ca_clin_t4_det = map_ca_clin_t4_det(ca_clin_t4_det),
+      ca_clin_n_stage = map_ca_clin_n_stage(ca_clin_n_stage),
+      ca_path_group_stage = map_ca_path_group_stage(ca_path_group_stage),
+      # ca_path_t* variables use the same mappings as their clin counterparts
+      ca_path_t_stage = map_ca_clin_t_stage(ca_path_t_stage),
+      ca_path_t1_det = map_ca_clin_t1_det(ca_path_t1_det),
+      ca_path_t2_det = map_ca_clin_t2_det(ca_path_t2_det),
+      ca_path_t3_det = map_ca_clin_t3_det(ca_path_t3_det),
+      ca_path_t4_det = map_ca_clin_t4_det(ca_path_t4_det),
+      ca_path_n_stage = map_ca_path_n_stage(ca_path_n_stage),
+      ca_tx_pre_path_stage = map_ca_tx_pre_path_stage(ca_tx_pre_path_stage),
+      ca_dmets_yn = map_ca_dmets_yn(ca_dmets_yn),
+      ca_stage = map_ca_stage(ca_stage),
+      ca_stage_iv = map_ca_stage_iv(ca_stage_iv)
+    )
+
+  rtn <- fill_ca_stage(rtn)
+
+  rtn <- derive_stage_dx(rtn)
+
+  rtn <- derive_age_dx(rtn)
+
+  rtn <- rtn |>
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::starts_with("ca_first_dmets"),
+        map_ca_dmets_site
+      )
+    )
+
+  if ("ca_clin_group_stage" %in% names(rtn)) {
+    rtn <- rtn |>
+      dplyr::mutate(
+        ca_clin_group_stage = map_ca_clin_group_stage(ca_clin_group_stage)
+      )
+  }
+
+  if ("ca_lung_cigarette" %in% names(rtn)) {
+    rtn <- rtn |>
+      dplyr::mutate(
+        ca_lung_cigarette = map_ca_lung_cigarette(ca_lung_cigarette)
+      )
+  }
+
+  rtn <- add_mos_yrs_intervals(rtn) # anything ending in days.
+
+  if (length(cast_to_double) > 0) {
+    rtn <- rtn |>
+      dplyr::mutate(dplyr::across(dplyr::all_of(cast_to_double), as.double))
+  }
+
+  return(rtn)
+}

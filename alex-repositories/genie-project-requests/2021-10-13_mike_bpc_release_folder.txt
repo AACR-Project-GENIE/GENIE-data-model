@@ -1,0 +1,42 @@
+
+# Description: restructure the BPC GENIE release folder to group releases by folder
+# Author: Haley Hunter-Zinck
+# Date: 2021-11-13
+# Request: 
+# 	Source: Mike Fiandalo via slack
+#	Date of request: 2021-11-13
+#	Msg: new GENE BPC sociome team needs access but only to 11.x series
+
+folder_07=syn26342391
+folder_08=syn26342376
+folder_09=syn26342377
+folder_10=syn26342379
+folder_11=syn26342380
+
+
+for synid in syn24860918 syn25147824 syn25453435 syn25720613 syn25825745 syn25895501
+{
+synapse mv --id $synid --parentid $folder_10
+}
+
+for synid in syn26003797 syn26135714 syn26288509 
+{
+synapse mv --id $synid --parentid $folder_11
+}
+
+for synid in syn21784542
+{
+synapse mv --id $synid --parentid $folder_07
+}
+
+for synid in syn21784549 syn21958925 syn22042439 syn22160798
+{
+synapse mv --id $synid --parentid $folder_08
+}
+
+for synid in syn22282697 syn22328071 syn23138503 syn23546044 syn23584660 syn24168408 syn25456621
+{
+synapse mv --id $synid --parentid $folder_09
+}
+
+

@@ -1,0 +1,205 @@
+---
+title: "Vital status value inconsistencies"
+author: "Haley Hunter-Zinck"
+date: "`r Sys.setenv(TZ='America/Los_Angeles'); format(Sys.time(), '%B %d, %Y at %I:%M %p %Z')`"
+output: html_document
+parameters:
+  synid_file_patient: x
+  synid_version_patient: x
+---
+
+## Overview
+
+We look for discrepancies in vital status information submitted for main GENIE consortium releases.  
+
+We check the following variables:
+
+* YEAR_DEATH
+* INT_DOD
+* DEAD
+
+for inconsistencies with any of the following rules: 
+
+1. If the YEAR_DEATH is redacted ('>89' or '<18') then INT_DOD must also be redacted ('<6570' or '>32485') and vice versa.
+2. If YEAR_DEATH or INT_DOD is an unredacted text value ('Unknown', 'Not Collected', 'Not Applicable', 'Not Released'), INT_DOD and YEAR_DEATH must hold the same text value.  
+3. If YEAR_DEATH or INT_DOD is 'Not Applicable', DEAD must be False.
+4. If INT_DOD is a redacted or unredacted number, DEAD must be True.
+5. YEAR_DEATH AND INT_DOD must not be NA.
+6. DEAD must be 'False' or 'True'
+
+## Parameters
+
+Synapse ID of patient file: `r synid_file_patient`
+
+Synapse version of patient file: `r synid_version_patient`
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+
+library(synapser)
+invisible(synLogin())
+library(glue)
+library(dplyr)
+
+```
+
+```{r functions, include = F}
+#' Download and load data stored in csv or other delimited format on Synapse
+#' into an R data frame.
+#' 
+#' @param synapse_id Synapse ID
+#' @version Version of the Synapse entity to download.  NA will load current
+#' version
+#' @param set Delimiter for file
+#' @param na.strings Vector of strings to be read in as NA values
+#' @param header TRUE if the file contains a header row; FALSE otherwise.
+#' @param check_names TRUE if column names should be modified for compatibility 
+#' with R upon reading; FALSE otherwise.
+#' @return data frame
+get_synapse_entity_data_in_csv <- function(synapse_id, 
+                                           version = NA,
+                                           sep = ",", 
+                                           na.strings = c("NA"), 
+                                           header = T,
+                                           check_names = F, 
+                                           comment.char = "#") {
+  
+  if (is.na(version)) {
+    entity <- synGet(synapse_id)
+  } else {
+    entity <- synGet(synapse_id, version = version)
+  }
+  
+  data <- read.csv(entity$path, stringsAsFactors = F, 
+                   na.strings = na.strings, sep = sep, check.names = check_names,
+                   header = header, comment.char = comment.char)
+  return(data)
+}
+```
+
+```{r read, include = F}
+
+data <- get_synapse_entity_data_in_csv(synid_file_patient, version = synid_version_patient, sep = "\t", na.strings = c("NA", ""))
+
+```
+
+
+## Vital data summary
+
+Number of patients = `r nrow(data)` 
+
+Unique non-numeric values for YEAR_DEATH:
+```{r YEAR_DEATH values, include = T}
+data %>% 
+  filter(!(grepl(pattern = "[0-9]{4}", x = YEAR_DEATH))) %>% 
+  select(YEAR_DEATH) %>% 
+  group_by(YEAR_DEATH) %>% 
+  count() %>%
+  arrange(desc(n))
+```
+
+Unique non-numeric values for INT_DOD:
+```{r INT_DOD values, include = T}
+data %>% 
+  filter(!(grepl(pattern = "[0-9]{4}", x = INT_DOD))) %>% 
+  select(INT_DOD) %>% 
+  group_by(INT_DOD) %>% 
+  count() %>%
+  arrange(desc(n))
+```
+
+Unique values for DEAD:
+```{r DEAD values, include = T}
+data %>% 
+  select(DEAD) %>% 
+  group_by(DEAD) %>% 
+  count() %>%
+  arrange(desc(n))
+```
+
+## Checks for vital information inconsistencies
+
+### Check 1
+
+```{r redaction, include = F}
+data_err_red <- data %>%
+  filter(grepl(pattern = "[<>]", x = YEAR_DEATH) & !grepl(pattern = "[<>]", x = INT_DOD) |
+           !grepl(pattern = "[<>]", x = YEAR_DEATH) & grepl(pattern = "[<>]", x = INT_DOD)) %>%
+  select(YEAR_DEATH, INT_DOD, CENTER)
+```
+
+Number of inconsistent redactions: `r nrow(data_err_red)`
+
+Centers with inconsistent redactions:
+```{r redaction centers, include = T}
+data_err_red %>% select(CENTER) %>% distinct()
+```
+
+Sample of inconsistent redaction entries: 
+```{r redaction examples, include = T}
+head(data_err_red %>% select(YEAR_DEATH, INT_DOD) %>% distinct())
+```
+
+### Check 2
+
+```{r text value match, include = F}
+strs <- c("Unknown", "Not Collected", "Not Applicable", "Not Released")
+data_err_text <- data %>%
+  filter((is.element(YEAR_DEATH, strs) | is.element(INT_DOD, strs)) & YEAR_DEATH != INT_DOD) %>%
+  select(YEAR_DEATH, INT_DOD, CENTER)
+```
+
+Number of inconsistent text values: `r nrow(data_err_text)`
+
+Centers with inconsistent text values:
+```{r text centers, include = T}
+data_err_text %>% select(CENTER) %>% distinct()
+```
+
+Sample of inconsistent unredacted text values:
+```{r text examples, include = T}
+head(data_err_text %>% select(YEAR_DEATH, INT_DOD) %>% distinct())
+```
+
+### Check 3
+
+```{r NA DEAD F, include = F}
+strs_true <- c("TRUE", "True")
+data_err_dead_na <- data %>% 
+  filter((INT_DOD == 'Not Applicable' | YEAR_DEATH == 'Not Applicable') & is.element(DEAD, strs_true)) %>%
+  select(INT_DOD, YEAR_DEATH, DEAD, CENTER)
+```
+
+Number of inconsistent DEAD values for 'Not Applicable' vital info: `r nrow(data_err_dead_na)`
+
+Centers with inconsistent DEAD values for 'Not Applicable' vital info:
+```{r NA dead centers, include = T}
+data_err_dead_na %>% select(CENTER) %>% distinct()
+```
+
+Distinct patterns of inconsistent DEAD values with 'Not Applicable' vitals:
+```{r dead NA examples, include = T}
+data_err_dead_na %>% select(INT_DOD, YEAR_DEATH, DEAD) %>% distinct()
+```
+
+### Check 4
+
+```{r red DEAD T, include = F}
+strs_false <- c("FALSE", "False")
+data_err_dead_red <- data %>% 
+  filter((grepl(pattern = "[<>]", x = YEAR_DEATH) | grepl(pattern = "[<>]", x = INT_DOD)) & is.element(DEAD, strs_false)) %>%
+  select(INT_DOD, YEAR_DEATH, DEAD, CENTER)
+```
+
+Number of inconsistent DEAD values for redacted vitals: `r nrow(data_err_dead_red)`
+
+Centers with inconsistent DEAD values for redacted vitals:
+```{r redacted dead centers, include = T}
+data_err_dead_red %>% select(CENTER) %>% distinct()
+```
+
+Distinct patterns of inconsistent DEAD values with redacted vitals:
+```{r dead red examples, include = T}
+data_err_dead_red %>% select(INT_DOD, YEAR_DEATH, DEAD) %>% distinct()
+```
+

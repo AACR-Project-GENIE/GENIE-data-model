@@ -1,0 +1,296 @@
+---
+title: "Breast cancer survival on common regimens"
+author: "Alex Paynter"
+date: "`r format(Sys.Date(), '%d %b %Y')`"
+editor_options:
+  quarto:
+    chunk_output_type: console
+  chunk_output_type: console
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 3
+    theme: sandstone 
+execute:
+  echo: false
+  include: false
+  warning: false
+  message: false
+  fig.width: 7
+  fig.height: 5
+---
+
+```{r}
+library(fs); library(purrr); library(here);
+purrr::walk(.x = fs::dir_ls(here("R")), .f = source)
+```
+
+
+```{r}
+dft_pt <- readr::read_rds(
+  here('data', 'clin_data_cohort', 'dft_pt.rds')
+)
+dft_ca_ind <- readr::read_rds(
+  here('data', 'clin_data_cohort', 'dft_ca_ind.rds')
+)
+dft_clin_char_dmet <- readr::read_rds(
+  here('data', 'survival', 'v2', 'prepared_data', 'clin_char_dmet.rds')
+)
+dft_reg <- readr::read_rds(
+  here('data', 'clin_data_cohort', 'dft_reg.rds')
+)
+```
+
+
+```{r}
+dft_clin_char_dmet %<>%
+  filter(!is.na(dx_to_dmets_yrs)) %>%
+  # removes some of the survival stuff to avoid confusion
+  select(
+    -c(os_dx_status, tt_os_dx_yrs,
+       pfs_i_and_m_adv_status,
+       tt_pfs_i_and_m_adv_yrs,
+       tt_os_dmet_yrs)
+  )
+
+dft_ca_ind %<>% 
+  # Just some T/F versions for easier code:
+  mutate(
+    er_pos = ca_bca_er %in% "Positive/elevated",
+    pr_pos = ca_bca_pr %in% "Positive/elevated",
+    her2_pos = ca_bca_her_summ %in% "Positive/elevated/amplified"
+  )
+# These obviously clump NA and F into one group - be advised and careful using.
+```
+
+
+```{r}
+#| eval: false
+
+# sorting a few things out for my own sanity:
+dft_ca_ind %>% tabyl(er_pos, pr_pos) %>% adorn_totals("both") # mostly the same, er slightly more common.
+dft_ca_ind %>% tabyl(er_pos, her2_pos) %>% adorn_totals("both") # wildly different, most are HER2-.
+
+# Both of these have some positives which are NA for bca_subtype summary var:
+dft_ca_ind %>% tabyl(er_pos, bca_subtype) %>% adorn_totals("both") # 27 are ER pos, with NA for bca_subtype.
+dft_ca_ind %>% tabyl(her2_pos, bca_subtype) %>% adorn_totals("both") # 3 are HER2 pos, with NA for bca_subtype.
+
+# I'm assuming people with either ER or PR missing are not triple negative?
+dft_ca_ind %>%
+  filter(!er_pos & !pr_pos) %>%
+  count(bca_subtype)
+# yes.
+```
+
+
+```{r}
+dft_clin_char_dmet <- dft_ca_ind %>%
+  arrange(desc(her2_pos), desc(er_pos)) |>
+  mutate(
+    reg_surv_group = case_when(
+      her2_pos ~ "HER2+",
+      er_pos ~ "ER+, HER2-/?",
+      bca_subtype %in% "Triple Negative" ~ "TNBC",
+      T ~ NA_character_ # very heterogeneous group left out here.
+    )
+  ) %>%
+  mutate(reg_surv_group = fct_inorder(reg_surv_group)) %>%
+  select(record_id,
+         ca_seq,
+         reg_surv_group) %>%
+  left_join(dft_clin_char_dmet, ., by = c('record_id', 'ca_seq'))
+
+dft_clin_char_dmet %<>%
+  # need this to estimate calendar date of regimens
+    left_join(
+    ., 
+    select(dft_ca_ind, record_id, ca_seq, ca_cadx_int),
+    by = c('record_id', 'ca_seq')
+  ) 
+  
+      
+dft_reg_met <- left_join(
+  dft_clin_char_dmet,
+  dft_reg,
+  by = c('record_id', 'ca_seq')
+)
+```
+
+
+```{r}
+dft_reg_met %<>%
+  mutate(
+    .assumed_bd = lubridate::ymd(paste(birth_year, "-12-31")),
+    reg_start_date_latest = .assumed_bd + 
+      lubridate::days(ca_cadx_int) + 
+      lubridate::days(dx_reg_start_int)
+  ) %>%
+  select(-.assumed_bd)
+
+dft_reg_met %<>%
+  # only regmiens started on or after dmet
+  mutate(dmet_reg_start_yrs = dx_reg_start_int_yrs - dx_to_dmets_yrs) %>%
+  filter(dmet_reg_start_yrs > -0.5/365)
+
+vec_drug_exclusions <- c("Leuprolide Acetate", "Goserlin Acetate")
+
+# This probably isn't the best place to limit on investigational agents, can fix later on.
+dft_reg_met %<>%
+  filter(
+    !str_detect(regimen_drugs, "Investigational"),
+    !(regimen_drugs %in% vec_drug_exclusions)
+  )
+```
+
+
+```{r}
+#| eval: false
+ggplot(dft_reg_met, aes(x = reg_start_date_latest)) + stat_ecdf() + theme_bw()
+```
+
+
+```{r}
+dft_bca_nest <- dft_reg_met %>%
+  arrange(reg_surv_group, dmet_reg_start_yrs) %>%
+  nest(.by = reg_surv_group) 
+
+dft_bca_nest %<>%
+  mutate(
+    dat_1L = purrr::map(
+      .x = data,
+      .f = \(z) {
+        z %>%
+          group_by(record_id) %>%
+          arrange(dmet_reg_start_yrs) %>%
+          slice(1) %>%
+          ungroup()
+      }
+    )
+  )
+
+dft_bca_nest %<>%
+  mutate(
+    dat_1L_select = purrr::map2(
+      .x = reg_surv_group,
+      .y = dat_1L,
+      .f = \(x,y) {
+        if (x %in% "TNBC") {
+          rtn <- y %>% filter(str_detect(tolower(regimen_drugs), "capecitabine"))
+        } else if (x %in% "ER+, HER2-/?") {
+          # Going for aromatase inhibitor + CDK in this group.
+          rtn <- y %>% 
+            mutate(
+              .has_aromatase_inh = str_detect(
+                tolower(regimen_drugs), "anastrozole|letrozole|exemestane"
+              ),
+              .has_cdk = str_detect(
+                tolower(regimen_drugs), "palbociclib|ribociclib|abemaciclib"
+              )
+            ) %>%
+            filter(.has_aromatase_inh & .has_cdk & drugs_num %in% 2) %>%
+            select(-contains("^\\."))
+        } else if (x %in% "HER2+") {
+          # Going for THP regimen in this group, with either doce or paclitaxel acceptable
+          #   for the T part.
+          rtn <- y %>% 
+            filter(
+              regimen_drugs %in% c(
+                "Docetaxel, Pertuzumab, Trastuzumab",
+                "Paclitaxel, Pertuzumab, Trastuzumab"
+              )
+            )
+        } else {
+          # Do nothing.
+          rtn <- y 
+        }
+        return(rtn)
+      }
+    )
+  )
+
+
+dft_bca_nest %<>%
+  mutate(
+    dat_reg_incl_ft = purrr::map(
+      .x = dat_1L_select,
+      .f = \(z) {
+        z %>% 
+          count(regimen_drugs) %>%
+          flextable(.) %>%
+          autofit(.)
+      }
+    )
+  )
+```
+
+
+```{r}
+pull_element <- function(group, col, frame = dft_bca_nest) {
+  frame %>%
+    filter(reg_surv_group %in% group) %>%
+    pull(.data[[col]]) %>%
+    `[[`(.,1)
+}
+
+```
+
+## Restrictions
+
+- Excluded any regimen with an investigational agent.
+- Excluded these drugs from being considered lines:  `r paste(vec_drug_exclusions, collapse = ", ")`.
+  - The point of these exclusions is eliminating drugs that would typically not be considered first line therapy.
+
+## Groups and reasoning
+
+After looking at feasibility we seem to have sufficient numbers to look at first line regimens only, where first line is just determined by the first post-met regimen after the above exclusions.
+
+We have three groups:
+
+- **HER2+** For anyone HER2+, a THP (taxotere = docetaxel, herceptin = trastuzumab, perjeta = pertuzumab) was approved and recommended for the majority of the observation period.  We also included regimens that substitute paclitaxel for docetaxel after observing that was somewhat common.
+- **ER+, HER2-/?** - For those with elevated estrogen receptor expression (ER+) and NOT HER2+ (that is, negative or unknown), a common choice was combining an aromatase inhibitor with a CDK inhibitor, and the group expressed interest in looking at CDK inhibitors.  We tagged anastrozole, letroszole and exemestane as aromatase inhibitors and palbociclib, ribociclib and abemaciclib as CDK inhibitors.  By far the most common choice was letrozole with palbociclib in this cohort, should we want something more homogeneous.
+  - We have mostly used HR+ as a descriptor in this cohort rather than ER+ and PR+.  ER+ was the label indication for palbociclib Feb 2015 to Feb 2016, at which point HR+ indications were added, so ER+ does have special significance in this group.  This is a dense period of observation for metastatic regimens in our cohort.  We could change back to including all HR+/HER2-/? for consistency with the rest of the paper.
+- **TNBC** - For those confirmed to be HER2-/PR-/ER-, chemotherapy was the group's expectation for a metastatic regimen.  The most common chemotherapy choice was capecitabine, so that's what we looked at.
+
+Importantly, there are people excluded from this grouping.  For example, HER2-/ER-/PR+ and HER2?/ER-/PR- would both be excluded from the analysis.
+
+## HER2+
+
+The following regimens were included in the analysis group:
+
+```{r}
+#| include: true
+pull_element("HER2+", "dat_reg_incl_ft")
+```
+
+Because we're looking at the first line setting, each person contributes at most one regimen.
+
+**<PFS/OS KM curves here>**
+
+
+## ER+, HER2-/?
+
+
+The following regimens were included in the analysis group:
+
+```{r}
+#| include: true
+pull_element("ER+, HER2-/?", "dat_reg_incl_ft")
+```
+
+Because we're looking at the first line setting, each person contributes at most one regimen.
+
+**<PFS/OS KM curves here>**
+
+## TNBC
+
+The following regimens were included in the analysis group:
+
+```{r}
+#| include: true
+pull_element("TNBC", "dat_reg_incl_ft")
+```
+
+Because we're looking at the first line setting, each person contributes at most one regimen.
+
+**<PFS/OS KM curves here>**
