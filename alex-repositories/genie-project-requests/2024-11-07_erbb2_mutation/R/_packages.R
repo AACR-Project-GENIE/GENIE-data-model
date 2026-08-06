@@ -1,6 +1,0 @@
-library(here)
-library(tidyverse)
-library(magrittr)
-library(cli)
-library(flextable)
-library(DT)
